@@ -58,9 +58,12 @@ public class User {
 		return this.createdDocs.contains(doc);
 	}
 	
-	public void inviteUser (User username, Document doc) {
+	/*
+	 * public void inviteUser (User username, Document doc) {
 		//Turing sendInvite(this,username,doc);
+		return;
 	}
+	 */
 	
 	public void edit(Document doc, int section) {
 		if(!doc.locks.get(section).tryLock())
@@ -76,7 +79,7 @@ public class User {
 		if(!doc.locks.get(section).isHeldByCurrentThread()) 
 			System.err.println("Lock non di questo thread");
 		
-		if()
+		
 	}
 	
 }
