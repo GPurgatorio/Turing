@@ -7,6 +7,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -14,23 +16,19 @@ import java.util.concurrent.Executors;
 
 public class Turing {
 
-	private static Map<User,Document> database;
+	private static Map<String, User> database;
+	private static Map<String, Document> docs;
 	private static Set<String> usersOnline;
 	private static Set<String> usersOffline;
-	private static Set<Document> docs;
 	private static int DEFAULT_PORT = 6789;
 	private static ServerSocket welcomeSocket;
 	
-	public Turing() throws IOException {
-		;
-	}
-	
 	public static void main(String[] args) throws IOException {
 		
-		database = new HashMap<User,Document>();
+		database = new HashMap<String, User>();	// <username, User>
+		docs = new HashMap<String, Document>();	// <docName, docCreator>
 		usersOnline = new HashSet<String>();
 		usersOffline = new HashSet<String>();
-		docs = new HashSet<Document>();
 		welcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
 		
 		ExecutorService e = Executors.newFixedThreadPool(10);
@@ -52,7 +50,7 @@ public class Turing {
 	static void register(String username, String password) {
 		
 		User u = new User(username, password);
-		database.put(u, null);
+		database.put(username, u);
 		usersOffline.add(username);
 	}
 	
@@ -61,7 +59,6 @@ public class Turing {
 		if(usersOffline.contains(username)) {
 			usersOffline.remove(username);
 			usersOnline.add(username);
-			//database
 			return true;
 		}
 		
@@ -73,22 +70,33 @@ public class Turing {
 		if(usersOnline.contains(username)) {
 			usersOnline.remove(username);
 			usersOffline.add(username);
-			//database
 			return true;
 		}
 		
 		return false;
 	}
 	
-	
-	static boolean sendInvite(User sender, User receiver, Document doc) {
+	static boolean createDoc(String creator, String docName) {
 		
-		//se il mittente non è registrato, se il destinatario non è registrato, se il documento non esiste, se il mittente non ha creato il documento o il destinatario è già editor
-		if(!checkAll(sender.getUser()) || !checkAll(receiver.getUser()) || !docs.contains(doc) || !doc.isCreator(sender) || !doc.isEditor(receiver))
+		
+		
+		return true;
+	}
+	
+	
+	static boolean sendInvite(String sender, String receiver, String docName) {
+		
+		User rec = database.get(receiver);
+		User snd = database.get(sender);
+		Document d = docs.get(docName);
+		
+		//se il mittente non è registrato, se il destinatario non è registrato, se il documento già esiste, se il mittente non ha creato il documento o il destinatario è già editor
+		if(!checkAll(sender) || !checkAll(receiver) || docs.containsKey(docName) || !docs.get(docName).isCreator(snd) || !database.get(receiver).isEditor(docName))
 				return false;
 		
-		doc.addEditor(receiver);
-		//database
+		docs.get(docName).addEditor(database.get(receiver));
+		rec.addToInvitedDocs(d);
+		
 		return true;
 	}
 }

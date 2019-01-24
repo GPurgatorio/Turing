@@ -26,8 +26,8 @@ public class requestHandler implements Runnable {
 		
 		do {
 			try {
-				System.out.println("Thread serving.");
-				String username, password, answer;
+				
+				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();
 				System.out.println("Server @Thread - Received: " + command);
 				
@@ -35,7 +35,7 @@ public class requestHandler implements Runnable {
 				inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 				
 				if(command.equals("register")) {
-					System.out.println("Register");
+					System.out.println("Thread handling: registerRequest");
 					
 					username = inFromClient.readLine();				
 					password = inFromClient.readLine();
@@ -54,7 +54,7 @@ public class requestHandler implements Runnable {
 				}
 				
 				else if(command.equals("login")) {
-					System.out.println("Login:");
+					System.out.println("Thread handling: loginRequest:");
 					
 					username = inFromClient.readLine();
 					nameServed = username;
@@ -68,6 +68,38 @@ public class requestHandler implements Runnable {
 					
 					outToClient.writeBytes(answer);
 				}
+			
+			
+				else if(command.equals("logout")) {
+					System.out.println("Thread handling: logoutRequest:");
+					
+					username = inFromClient.readLine();
+					answer = "ERROR" + '\n';
+
+					if(Turing.disconnect(username)) 
+						answer = "Disconnected" + '\n';
+					
+					System.out.printf("DEBUG %s\n", answer);
+					outToClient.writeBytes(answer);
+					
+				}
+				
+				else if(command.equals("invite")) {
+					System.out.println("Thread handling: inviteRequest");
+					
+					username = inFromClient.readLine();
+					receiver = inFromClient.readLine();
+					docName = inFromClient.readLine();
+					answer = "ERROR" + '\n';
+					
+					if(Turing.sendInvite(username, receiver, docName)) {
+						
+					}
+				}
+				
+				else if(command.equals("editDoc")) {
+					System.out.println("Thread handling: editRequest");
+				}
 			}
 			catch (Exception e) {
 				try {
@@ -79,24 +111,6 @@ public class requestHandler implements Runnable {
 					e1.printStackTrace();
 				}
 			}
-			/*
-			else if(command.equals("logout")) {
-				System.out.println("Logout:");
-				
-				username = inFromClient.readLine();
-				
-				if(disconnect(username)) {
-					
-				}
-			}
-			
-			else if(command.equals("invite")) {
-				;
-			}
-			
-			else if(command.equals("editDoc")) {
-				;
-			}*/
 			
 		} while(flag);
 	}
