@@ -1,14 +1,9 @@
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -44,25 +39,35 @@ public class Turing {
 	
 
 	static boolean checkAll(String username) {
+		//controlla se esiste un utente di nome username
 		return (usersOnline.contains(username) || usersOffline.contains(username));
 	}
 	
-	static void register(String username, String password) {
+	static boolean register(String username, String password) {
 		
-		User u = new User(username, password);
-		database.put(username, u);
-		usersOffline.add(username);
-	}
-	
-	static boolean login(String username, String password) {
-		
-		if(usersOffline.contains(username)) {
-			usersOffline.remove(username);
-			usersOnline.add(username);
+		if(!checkAll(username)) {
+			User u = new User(username, password);
+			database.put(username, u);
+			usersOffline.add(username);
 			return true;
 		}
 		
 		return false;
+	}
+	
+	static int login(String username, String password) {
+		
+		if(usersOffline.contains(username)) {
+			usersOffline.remove(username);
+			usersOnline.add(username);
+			return 0;
+		}
+		
+		if(usersOnline.contains(username)) {
+			return -1;
+		}
+		
+		return -2;
 	}
 
 	static boolean disconnect (String username) {
@@ -76,27 +81,49 @@ public class Turing {
 		return false;
 	}
 	
-	static boolean createDoc(String creator, String docName) {
+	static int createDoc(String creator, String docName, int sections) {
 		
+		User u = database.get(creator);
 		
+		if(docs.containsKey(docName))
+			return -1;
 		
-		return true;
+		if (!database.containsKey(creator))
+			return -2;
+		
+		Document d = new Document(u, docName, sections);
+		docs.put(docName, d);
+		database.get(creator).createDocument(docName, sections);
+		
+		return 0;
 	}
 	
 	
-	static boolean sendInvite(String sender, String receiver, String docName) {
+	static int sendInvite(String sender, String receiver, String docName) {
 		
 		User rec = database.get(receiver);
 		User snd = database.get(sender);
 		Document d = docs.get(docName);
 		
-		//se il mittente non è registrato, se il destinatario non è registrato, se il documento già esiste, se il mittente non ha creato il documento o il destinatario è già editor
-		if(!checkAll(sender) || !checkAll(receiver) || docs.containsKey(docName) || !docs.get(docName).isCreator(snd) || !database.get(receiver).isEditor(docName))
-				return false;
+		// se il mittente non è registrato
+		if(!checkAll(sender))
+			return -1;
+		// se il destinatario non è registrato
+		if(!checkAll(receiver))
+			return -2;
+		// se il documento già esiste
+		if(docs.containsKey(docName))
+			return -3;
+		// se il mittente non ha creato il documento
+		if(!docs.get(docName).isCreator(snd))
+			return -4;
+		// se il destinatario è già editor
+		if(!database.get(receiver).isEditor(docName))
+			return -5;
 		
 		docs.get(docName).addEditor(database.get(receiver));
 		rec.addToInvitedDocs(d);
 		
-		return true;
+		return 0;
 	}
 }

@@ -1,5 +1,3 @@
-import java.awt.Color;
-import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
@@ -9,7 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -33,7 +30,6 @@ public class GUIClass extends JFrame {
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
-	private static String username;
 	private static final long serialVersionUID = 1L;
 	
 	private JPasswordField passField;
@@ -54,7 +50,6 @@ public class GUIClass extends JFrame {
 		outToServer = dos;
 		inFromServer = br;
 		clientSocket = s;
-		username = u;
 		loginUI();
 	}
 	
@@ -189,8 +184,7 @@ public class GUIClass extends JFrame {
 
         String res = inFromServer.readLine();
 		
-		if(!res.equals("ERROR")) {
-			username = inpUser;
+		if(res.equals("SUCCESS")) {
 			remove(userLabel);
 			remove(passLabel);
 			remove(registerButton);
@@ -203,9 +197,13 @@ public class GUIClass extends JFrame {
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}
-		else {
-			JOptionPane.showMessageDialog(null, "Wrong Password / Username");
-		}
+		else if(res.equals("UNKNWN_USR"))
+			JOptionPane.showMessageDialog(null, "Wrong Username or Password.");
+		else if(res.equals("LOGGED_ALRD"))
+			JOptionPane.showMessageDialog(null, "You are already logged in.");
+		else
+			JOptionPane.showMessageDialog(null, "Something weird happened.");
+		
 	}
 	
 	

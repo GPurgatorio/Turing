@@ -7,8 +7,6 @@ import java.net.Socket;
 public class requestHandler implements Runnable {
 
 	private String nameServed = "";
-	private static DataOutputStream outToServer;
-	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
 	private static BufferedReader inFromClient;
 	private static DataOutputStream outToClient;
@@ -30,9 +28,6 @@ public class requestHandler implements Runnable {
 				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();
 				System.out.println("Server @Thread - Received: " + command);
-				
-				outToServer = new DataOutputStream(clientSocket.getOutputStream());
-				inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 				
 				if(command.equals("register")) {
 					System.out.println("Thread handling: registerRequest");
@@ -63,8 +58,15 @@ public class requestHandler implements Runnable {
 					
 					System.out.printf("Received: %s %s\n", username, password);
 		
-					if(Turing.login(username, password)) 
-						answer = "Logged in" + '\n';
+					int res = Turing.login(username, password);
+					
+					if(res == -1)
+						answer = "LOGGED_ALRD" + '\n';
+					else if(res == -2)
+						answer = "UNKNWN_USR" + '\n';
+					else
+						answer = "SUCCESS" + '\n';
+					
 					
 					outToClient.writeBytes(answer);
 				}
@@ -77,11 +79,27 @@ public class requestHandler implements Runnable {
 					answer = "ERROR" + '\n';
 
 					if(Turing.disconnect(username)) 
-						answer = "Disconnected" + '\n';
+						answer = "SUCCESS" + '\n';
 					
-					System.out.printf("DEBUG %s\n", answer);
 					outToClient.writeBytes(answer);
 					
+				}
+				
+				else if(command.equals("createDoc")) {
+					System.out.println("Thread handling: createDocRequest");
+					
+					username = inFromClient.readLine();
+					docName = inFromClient.readLine();
+					int sections = inFromClient.read();
+					
+					int res = Turing.createDoc(username, docName, sections);
+					
+					if(res != 0) 
+						answer = "ERROR: " + res + '\n';
+					else
+						answer = "SUCCESS" + '\n';
+					
+					outToClient.writeBytes(answer);
 				}
 				
 				else if(command.equals("invite")) {
@@ -90,11 +108,18 @@ public class requestHandler implements Runnable {
 					username = inFromClient.readLine();
 					receiver = inFromClient.readLine();
 					docName = inFromClient.readLine();
-					answer = "ERROR" + '\n';
 					
-					if(Turing.sendInvite(username, receiver, docName)) {
-						
-					}
+					
+					int res = Turing.sendInvite(username, receiver, docName);
+					
+					if(res != 0) 	//controllo errore
+						answer = "ERROR: " + res + '\n';
+					
+					else
+						answer = "SUCCESS" + '\n';
+					
+					outToClient.writeBytes(answer);
+					
 				}
 				
 				else if(command.equals("editDoc")) {

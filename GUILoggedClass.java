@@ -16,6 +16,8 @@ import javax.swing.JOptionPane;
 
 public class GUILoggedClass extends JFrame {
 	
+	private static final long serialVersionUID = 1L;
+	
 	private String username;
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
@@ -148,7 +150,7 @@ public class GUILoggedClass extends JFrame {
 			add(logoutButton);
 		}
 		catch (IOException e) {
-			;
+			e.printStackTrace();
 		}
 			
 		userLabel = new JLabel(username);
