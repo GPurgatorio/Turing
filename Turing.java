@@ -2,31 +2,50 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
+import java.net.UnknownHostException;
+import java.rmi.AlreadyBoundException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class Turing {
 
-	private static Map<String, User> database;
-	private static Map<String, Document> docs;
+	private static ExecutorService e;
+	private static ConcurrentHashMap<String, User> database;
+	private static ConcurrentHashMap<String, Document> docs;
 	private static Set<String> usersOnline;
 	private static Set<String> usersOffline;
 	private static int DEFAULT_PORT = 6789;
 	private static ServerSocket welcomeSocket;
 	
-	public static void main(String[] args) throws IOException {
+	private static void init() throws UnknownHostException, IOException, AlreadyBoundException {
 		
-		database = new HashMap<String, User>();	// <username, User>
-		docs = new HashMap<String, Document>();	// <docName, docCreator>
+		database = new ConcurrentHashMap<String, User>();	// <username, User>
+		docs = new ConcurrentHashMap<String, Document>();	// <docName, docCreator>
 		usersOnline = new HashSet<String>();
 		usersOffline = new HashSet<String>();
 		welcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
 		
-		ExecutorService e = Executors.newFixedThreadPool(10);
+		e = Executors.newFixedThreadPool(10);
+		
+		RegistrationRMI obj = new RegistrationRMI(database, usersOffline, usersOnline);
+        RegistrationInterface stub = (RegistrationInterface) UnicastRemoteObject.exportObject(obj, 0);
+
+        // Bind the remote object's stub in the registry
+        Registry registry = LocateRegistry.createRegistry(1099);
+        registry.bind(RegistrationInterface.SERVICE_NAME, stub);
+
+        System.err.println("Server ready");
+	}
+	
+	public static void main(String[] args) throws IOException, AlreadyBoundException {
+		
+		init();
 		
 		while (true) {
 			Socket connectionSocket = null;
@@ -43,18 +62,6 @@ public class Turing {
 		return (usersOnline.contains(username) || usersOffline.contains(username));
 	}
 	
-	static boolean register(String username, String password) {
-		
-		if(!checkAll(username)) {
-			User u = new User(username, password);
-			database.put(username, u);
-			usersOffline.add(username);
-			return true;
-		}
-		
-		return false;
-	}
-	
 	static int login(String username, String password) {
 		
 		if(usersOffline.contains(username)) {
@@ -63,10 +70,9 @@ public class Turing {
 			return 0;
 		}
 		
-		if(usersOnline.contains(username)) {
+		if(usersOnline.contains(username))
 			return -1;
-		}
-		
+
 		return -2;
 	}
 

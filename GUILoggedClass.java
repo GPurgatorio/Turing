@@ -13,6 +13,7 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JTextField;
 
 public class GUILoggedClass extends JFrame {
 	
@@ -24,7 +25,7 @@ public class GUILoggedClass extends JFrame {
 	private static Socket clientSocket;
 	private Image createDocImg, inviteImg, showImg, listImg, editImg, logoutImg;
 	private JButton createDocButton, inviteButton, editButton, listButton, showButton, logoutButton;
-	private JLabel userLabel, stupidJLabel;
+	private JLabel userLabel;
 	
 	public GUILoggedClass(DataOutputStream dos, BufferedReader ifs, Socket s, String username) {
 		GUILoggedClass.outToServer = dos;
@@ -69,11 +70,11 @@ public class GUILoggedClass extends JFrame {
 			logoutButton.setIcon(new ImageIcon(logoutImg));
 			
 			createDocButton.setBounds(85,50,115,115);
-			inviteButton.setBounds(205,50,115,115);
+			inviteButton.setBounds(210,50,115,115);
 			showButton.setBounds(85,170,115,115);
-			listButton.setBounds(205,170,115,115);
+			listButton.setBounds(210,170,115,115);
 			editButton.setBounds(85,290,115,115);
-			logoutButton.setBounds(205,290,115,115);
+			logoutButton.setBounds(210,290,115,115);
 			
 			createDocButton.addActionListener(new ActionListener() { 
 				public void actionPerformed(ActionEvent ae){
@@ -153,18 +154,66 @@ public class GUILoggedClass extends JFrame {
 			e.printStackTrace();
 		}
 			
-		userLabel = new JLabel(username);
-		stupidJLabel = new JLabel("Current user:");
-		
-		stupidJLabel.setBounds(10,10,75,15);
-		userLabel.setBounds(90,10,75,15);
-
-		add(stupidJLabel);
+		userLabel = new JLabel("Current user: " + username);
+		userLabel.setBounds(10,10,105,15);
 		add(userLabel);
 	}
 	
 	public void createDocRequest() throws IOException {
+		
+		JTextField docLabel = new JTextField();
+		JTextField secLabel = new JTextField();
+		
+		Object[] struct = {
+				"Nome Documento:", docLabel,
+				"Numero Sezioni [1-9]:", secLabel
+		};
+		
+		
+		String res, docName = null;
+		int sections; 
+		
+		do {
+			try {
+				
+				int option = JOptionPane.showConfirmDialog(null, struct, "Creazione Documento", JOptionPane.OK_CANCEL_OPTION);
+				
+				if (option == JOptionPane.OK_OPTION) {
+					docName = docLabel.getText();
+					sections = Integer.parseInt(secLabel.getText());
+				}
+				
+				else
+					return;
+			}
+			catch (NumberFormatException e) {
+				sections = -1;
+			}
+		} while (sections < 1 || sections > 9 || docName == null);
+		
 		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(docName + '\n');
+		outToServer.writeByte(sections);
+		
+		res = inFromServer.readLine();
+		
+		switch(res) {
+			case "SUCCESS":
+				JOptionPane.showMessageDialog(null, "Documento creato con successo!");
+				break;
+			case "DOC_EXISTS":
+				JOptionPane.showMessageDialog(null, "Nome del Documento già presente nel database.");
+				break;
+			case "HACKER":
+				JOptionPane.showMessageDialog(null, "Non risulti registrato.");
+				break;
+			case "ERROR":
+				JOptionPane.showMessageDialog(null, "Errore generico non specificato");
+				break;
+			default:
+				JOptionPane.showMessageDialog(null, "This should never happen");
+				break;
+		}
 		
 	}
 	
@@ -193,7 +242,6 @@ public class GUILoggedClass extends JFrame {
 		if(!res.equals("ERROR")) {
 			username = "";
 			remove(userLabel);
-			remove(stupidJLabel);
 			remove(createDocButton);
 			remove(inviteButton);
 			remove(showButton);

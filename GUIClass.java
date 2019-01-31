@@ -1,3 +1,4 @@
+import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
@@ -7,6 +8,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -25,12 +30,13 @@ public class GUIClass extends JFrame {
 		LOGGED,
 		EDITING
 	}
+
+	private static final long serialVersionUID = 1L;
+	private static int REGISTRATION_PORT = 1099;
 	
-	//private static BufferedReader inFromUser;
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
-	private static final long serialVersionUID = 1L;
 	
 	private JPasswordField passField;
 	private JTextField userField;
@@ -56,13 +62,13 @@ public class GUIClass extends JFrame {
 	public static void main(String[] args) throws IOException {
 		
 		GUIClass window = new GUIClass();
+		window.getContentPane().setBackground(Color.LIGHT_GRAY);
 		window.setLocation(400, 100);
 		window.setVisible(true);
 	}
 
 	private void init() {
 		try {
-			//inFromUser = new BufferedReader(new InputStreamReader(System.in));
 			clientSocket = new Socket("127.0.0.1", 6789);
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -108,23 +114,24 @@ public class GUIClass extends JFrame {
 		registerButton.setBounds(223, 345, 100, 25);
 		
 		loginButton.addActionListener(new ActionListener() { 
-			public void actionPerformed(ActionEvent ae){
-				try {
-					outToServer.writeBytes("login" + '\n');
-					loginRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
+			public void actionPerformed(ActionEvent ae) {
+				if(checkTextFields()) {
+					try {
+						outToServer.writeBytes("login" + '\n');
+						loginRequest();
+					} catch (IOException e) {
+						e.printStackTrace();	//outToServer.writeBytes
+					}
 				}
 			}
 		});
 		
 		registerButton.addActionListener(new ActionListener() { 
-			public void actionPerformed(ActionEvent ae){
+			public void actionPerformed(ActionEvent ae) {
 				try {
-					outToServer.writeBytes("register" + '\n');
 					registerRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			}
 		});
@@ -137,49 +144,57 @@ public class GUIClass extends JFrame {
 		add(passField);
 	}
 	
-	public void registerRequest() throws IOException{
-        
-        String inpUser;
-        inpUser = userField.getText();
-        if(inpUser.length()==0)
-        	JOptionPane.showMessageDialog(null, "Insert Username.");
-        outToServer.writeBytes(inpUser + '\n');
-
-        char[] inpPas;
-        inpPas = passField.getPassword();
-        String inpPass = new String(inpPas);
-        if(inpPass.length()==0)
-        	JOptionPane.showMessageDialog(null, "Insert Password.");
-        outToServer.writeBytes(inpPass + '\n');
-
-        String res = inFromServer.readLine();
+	public void registerRequest() throws NotBoundException, RemoteException{
 		
-		if(res.equals("ERROR"))
-			JOptionPane.showMessageDialog(null, "Username already exists.");
-		else
-			JOptionPane.showMessageDialog(null, "User successfully registered!");
-	}
-
-
-	public void loginRequest() throws IOException{
-        
         String inpUser;
         inpUser = userField.getText();
         if(inpUser.length()==0) {
-        	JOptionPane.showMessageDialog(null, "Insert Username");
-        	outToServer.writeBytes("BREAK" + '\n');
+        	JOptionPane.showMessageDialog(null, "Insert Username.", "Error", JOptionPane.ERROR_MESSAGE);
         	return;
         }
-        outToServer.writeBytes(inpUser + '\n');
 
         char[] inpPas;
         inpPas = passField.getPassword();
         String inpPass = new String(inpPas);
         if(inpPass.length()==0) {
-        	JOptionPane.showMessageDialog(null, "Insert Password");
-        	outToServer.writeBytes("BREAK" + '\n');
+        	JOptionPane.showMessageDialog(null, "Insert Password.", "Error", JOptionPane.ERROR_MESSAGE);
         	return;
         }
+        
+        Registry registry = LocateRegistry.getRegistry(REGISTRATION_PORT);
+        RegistrationInterface stub = (RegistrationInterface) registry.lookup(RegistrationInterface.SERVICE_NAME);
+        boolean res = stub.registerRequest(inpUser, inpPass);
+		
+		if(res)
+			JOptionPane.showMessageDialog(null, "User successfully registered!");
+		else
+			JOptionPane.showMessageDialog(null, "Username already exists.");
+		
+	}
+
+	public boolean checkTextFields() {
+		if(userField.getText().length()==0) {
+        	JOptionPane.showMessageDialog(null, "Insert Username");
+        	return false;
+		}
+        	
+		if(passField.getPassword().length==0) {
+			JOptionPane.showMessageDialog(null, "Insert Password");
+			return false;
+		}
+		
+		return true;
+	}
+	
+	public void loginRequest() throws IOException{
+        
+        String inpUser, inpPass;
+        char[] inpPas;
+        inpUser = userField.getText();        
+        outToServer.writeBytes(inpUser + '\n');
+
+        inpPas = passField.getPassword();
+        inpPass = new String(inpPas);
         outToServer.writeBytes(inpPass + '\n');
 
         String res = inFromServer.readLine();
@@ -194,6 +209,7 @@ public class GUIClass extends JFrame {
 			remove(logo);
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, inpUser);
+			w.getContentPane().setBackground(Color.LIGHT_GRAY);
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}

@@ -29,26 +29,7 @@ public class requestHandler implements Runnable {
 				String command = inFromClient.readLine();
 				System.out.println("Server @Thread - Received: " + command);
 				
-				if(command.equals("register")) {
-					System.out.println("Thread handling: registerRequest");
-					
-					username = inFromClient.readLine();				
-					password = inFromClient.readLine();
-					answer = "ERROR" + '\n';
-					
-					if(checkBreak(username, password)) {
-						outToClient.writeBytes(answer);
-					}
-					
-					if(!Turing.checkAll(username)) {
-						answer = "SUCCESS" + '\n';
-						Turing.register(username,password);
-					}
-	
-					outToClient.writeBytes(answer);
-				}
-				
-				else if(command.equals("login")) {
+				if(command.equals("login")) {
 					System.out.println("Thread handling: loginRequest:");
 					
 					username = inFromClient.readLine();
@@ -66,7 +47,6 @@ public class requestHandler implements Runnable {
 						answer = "UNKNWN_USR" + '\n';
 					else
 						answer = "SUCCESS" + '\n';
-					
 					
 					outToClient.writeBytes(answer);
 				}
@@ -94,10 +74,14 @@ public class requestHandler implements Runnable {
 					
 					int res = Turing.createDoc(username, docName, sections);
 					
-					if(res != 0) 
-						answer = "ERROR: " + res + '\n';
-					else
+					if(res == 0)
 						answer = "SUCCESS" + '\n';
+					else if (res == -1)
+						answer = "DOC_EXISTS" + '\n';
+					else if (res == -2)
+						answer = "HACKER" + '\n';
+					else
+						answer = "ERROR" + '\n';
 					
 					outToClient.writeBytes(answer);
 				}
@@ -138,10 +122,6 @@ public class requestHandler implements Runnable {
 			}
 			
 		} while(flag);
-	}
-	
-	private static boolean checkBreak(String username, String password) {
-		return (username.equals("BREAK") || password.equals("BREAK"));
 	}
 
 }
