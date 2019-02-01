@@ -24,7 +24,6 @@ import javax.swing.JTextField;
 
 public class GUIClass extends JFrame {
 	
-
 	public enum Status {
 		REGISTERED,
 		LOGGED,
@@ -50,9 +49,8 @@ public class GUIClass extends JFrame {
 		init();
 		loginUI();
 	}
-
 	
-	public GUIClass(DataOutputStream dos, BufferedReader br, Socket s, String u) {
+	public GUIClass(DataOutputStream dos, BufferedReader br, Socket s) {
 		outToServer = dos;
 		inFromServer = br;
 		clientSocket = s;
@@ -62,7 +60,7 @@ public class GUIClass extends JFrame {
 	public static void main(String[] args) throws IOException {
 		
 		GUIClass window = new GUIClass();
-		window.getContentPane().setBackground(Color.LIGHT_GRAY);
+		window.getContentPane().setBackground(new java.awt.Color(4, 167, 210));		
 		window.setLocation(400, 100);
 		window.setVisible(true);
 	}
@@ -86,10 +84,10 @@ public class GUIClass extends JFrame {
 		setSize(550,450);
 		
 		try {
-	        File file = new File("img/logo.bmp");
+	        File file = new File("img/logo.png");
 	        BufferedImage image = ImageIO.read(file);
 	        logo = new JLabel(new ImageIcon(image));
-	        logo.setBounds(120, 5, 300, 250);
+	        logo.setBounds(120, 5, 300, 270);
 	        add(logo);
 		}
 		catch (IOException e) {
@@ -103,19 +101,19 @@ public class GUIClass extends JFrame {
 		loginButton = new JButton("Login");
 		registerButton = new JButton("Sign Up");
 		
-		userLabel.setBounds(120, 257, 75, 15);		
-		passLabel.setBounds(120, 285, 75, 15);
+		userLabel.setBounds(120, 282, 75, 15);		
+		passLabel.setBounds(120, 309, 75, 15);
 		
-		userField.setBounds(200, 254, 150, 25);
+		userField.setBounds(200, 278, 150, 25);
 		userField.setColumns(10);
-		passField.setBounds(200, 280, 150, 25);
+		passField.setBounds(200, 304, 150, 25);
 
-		loginButton.setBounds(223, 320, 100, 25);
-		registerButton.setBounds(223, 345, 100, 25);
+		loginButton.setBounds(223, 340, 100, 25);
+		registerButton.setBounds(223, 365, 100, 25);
 		
 		loginButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae) {
-				if(checkTextFields()) {
+				if(checkTextFields()) {			
 					try {
 						outToServer.writeBytes("login" + '\n');
 						loginRequest();
@@ -187,7 +185,7 @@ public class GUIClass extends JFrame {
 	}
 	
 	public void loginRequest() throws IOException{
-        
+		
         String inpUser, inpPass;
         char[] inpPas;
         inpUser = userField.getText();        
@@ -209,7 +207,7 @@ public class GUIClass extends JFrame {
 			remove(logo);
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, inpUser);
-			w.getContentPane().setBackground(Color.LIGHT_GRAY);
+			w.getContentPane().setBackground(new java.awt.Color(173, 178, 184));
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}

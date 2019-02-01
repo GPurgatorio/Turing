@@ -27,7 +27,7 @@ public class requestHandler implements Runnable {
 				
 				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();
-				System.out.println("Server @Thread - Received: " + command);
+				System.out.println("Thread - Serving a " + command + " request.");
 				
 				if(command.equals("login")) {
 					System.out.println("Thread handling: loginRequest:");
@@ -93,14 +93,22 @@ public class requestHandler implements Runnable {
 					receiver = inFromClient.readLine();
 					docName = inFromClient.readLine();
 					
-					
 					int res = Turing.sendInvite(username, receiver, docName);
 					
-					if(res != 0) 	//controllo errore
-						answer = "ERROR: " + res + '\n';
-					
-					else
+					if(res == 0) 	
 						answer = "SUCCESS" + '\n';
+					else if (res == -1)
+						answer = "HACKER" + '\n';
+					else if (res == -2)
+						answer = "UNKNWN_USR" + '\n';
+					else if (res == -3)
+						answer = "UNKNWN_DOC" + '\n';
+					else if (res == -4)
+						answer = "NOT_CREATOR" + '\n';
+					else if (res == -5)
+						answer = "EDITOR_ALRD" + '\n';
+					else
+						answer = "ERROR" + '\n';
 					
 					outToClient.writeBytes(answer);
 					
@@ -108,6 +116,14 @@ public class requestHandler implements Runnable {
 				
 				else if(command.equals("editDoc")) {
 					System.out.println("Thread handling: editRequest");
+					
+					username = inFromClient.readLine();
+					docName = inFromClient.readLine();
+					int section = inFromClient.read();
+					
+					//TODO
+					outToClient.writeBytes("SUCCESS" + '\n');
+					
 				}
 			}
 			catch (Exception e) {

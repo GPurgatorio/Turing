@@ -117,8 +117,8 @@ public class Turing {
 		// se il destinatario non è registrato
 		if(!checkAll(receiver))
 			return -2;
-		// se il documento già esiste
-		if(docs.containsKey(docName))
+		// se il documento non esiste
+		if(!docs.containsKey(docName))
 			return -3;
 		// se il mittente non ha creato il documento
 		if(!docs.get(docName).isCreator(snd))
