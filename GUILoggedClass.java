@@ -79,7 +79,6 @@ public class GUILoggedClass extends JFrame {
 		createDocButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("createDoc" + '\n');
 					createDocRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -90,7 +89,6 @@ public class GUILoggedClass extends JFrame {
 		inviteButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("invite" + '\n');
 					inviteRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -101,7 +99,6 @@ public class GUILoggedClass extends JFrame {
 		showButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("show" + '\n');
 					showRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -112,7 +109,6 @@ public class GUILoggedClass extends JFrame {
 		listButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("list" + '\n');
 					listRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -123,7 +119,6 @@ public class GUILoggedClass extends JFrame {
 		editButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("editDoc" + '\n');
 					editRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -134,7 +129,6 @@ public class GUILoggedClass extends JFrame {
 		logoutButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae){
 				try {
-					outToServer.writeBytes("logout" + '\n');
 					logoutRequest();
 				} catch (IOException e) {
 					e.printStackTrace();	//outToServer.writeBytes
@@ -187,6 +181,8 @@ public class GUILoggedClass extends JFrame {
 			}
 		} while (sections < 1 || sections > 9 || docName == null);
 		
+		outToServer.writeBytes("createDoc" + '\n');
+		
 		outToServer.writeBytes(username + '\n');
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(sections);
@@ -235,6 +231,8 @@ public class GUILoggedClass extends JFrame {
 			else
 				return;
 		} while (docName == null || user == null);
+		
+		outToServer.writeBytes("invite" + '\n');
 		
 		outToServer.writeBytes(username + '\n');
 		outToServer.writeBytes(user + '\n');
@@ -300,6 +298,8 @@ public class GUILoggedClass extends JFrame {
 			}
 		} while (docName == null || sections < 0);
 		
+		outToServer.writeBytes("show" + '\n');
+		
 		outToServer.writeBytes(username + '\n');
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(sections);
@@ -319,6 +319,8 @@ public class GUILoggedClass extends JFrame {
 	}
 	
 	public void listRequest() throws IOException {
+	
+		outToServer.writeBytes("list" + '\n');
 		
 		outToServer.writeBytes(username + '\n');
 		
@@ -367,24 +369,29 @@ public class GUILoggedClass extends JFrame {
 				section = -1;
 			}
 		} while (docName == null || section < 0);
+
+		outToServer.writeBytes("editDoc" + '\n');
 		
 		outToServer.writeBytes(username + '\n');
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(section);
 		
-		res = inFromServer.readLine();		
+		String tmp = inFromServer.readLine();	
+		
+		if(tmp == null)
+			res = "ERROR";
+		
+		else if(tmp.startsWith("2"))
+			res = "SUCCESS";
+		
+		else
+			res = "ERROR";
 		
 		switch(res) {
 			case "SUCCESS":
-				remove(userLabel);
-				remove(createDocButton);
-				remove(inviteButton);
-				remove(showButton);
-				remove(listButton);
-				remove(editButton);
-				remove(logoutButton);
+				System.out.println("Client: passo in modalità Editing");
 				this.dispose();
-				GUIEditClass w = new GUIEditClass(outToServer, inFromServer, clientSocket, username);
+				GUIEditClass w = new GUIEditClass(outToServer, inFromServer, clientSocket, username, tmp, docName, section);
 				username = "";
 				w.getContentPane().setBackground(Color.LIGHT_GRAY);
 				w.setLocation(400, 100);
@@ -393,7 +400,7 @@ public class GUILoggedClass extends JFrame {
 			//TODO
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
-				System.err.println(res);
+				System.err.println(tmp);
 				break;
 		}
 		
@@ -401,19 +408,14 @@ public class GUILoggedClass extends JFrame {
 
 	public void logoutRequest() throws IOException {
 		
+		outToServer.writeBytes("logout" + '\n');
+		
 		outToServer.writeBytes(username + '\n');
 
 		String res = inFromServer.readLine();
 		
 		if(!res.equals("ERROR")) {
 			username = "";
-			remove(userLabel);
-			remove(createDocButton);
-			remove(inviteButton);
-			remove(showButton);
-			remove(listButton);
-			remove(editButton);
-			remove(logoutButton);
 			this.dispose();
 			GUIClass w = new GUIClass(outToServer, inFromServer, clientSocket);
 			w.getContentPane().setBackground(new java.awt.Color(4, 167, 210));	
@@ -421,7 +423,7 @@ public class GUILoggedClass extends JFrame {
 			w.setVisible(true);
 		}
 		else {
-			JOptionPane.showMessageDialog(null, "You can't disconnect. Don't ask me why tho");
+			JOptionPane.showMessageDialog(null, "Problema durante la disconnessione.");
 		}
 	}
 

@@ -30,7 +30,6 @@ public class requestHandler implements Runnable {
 				System.out.println("Thread - Serving a " + command + " request.");
 				
 				if(command.equals("login")) {
-					System.out.println("Thread handling: loginRequest:");
 					
 					username = inFromClient.readLine();
 					nameServed = username;
@@ -53,7 +52,6 @@ public class requestHandler implements Runnable {
 			
 			
 				else if(command.equals("logout")) {
-					System.out.println("Thread handling: logoutRequest:");
 					
 					username = inFromClient.readLine();
 					answer = "ERROR" + '\n';
@@ -66,7 +64,6 @@ public class requestHandler implements Runnable {
 				}
 				
 				else if(command.equals("createDoc")) {
-					System.out.println("Thread handling: createDocRequest");
 					
 					username = inFromClient.readLine();
 					docName = inFromClient.readLine();
@@ -87,7 +84,6 @@ public class requestHandler implements Runnable {
 				}
 				
 				else if(command.equals("invite")) {
-					System.out.println("Thread handling: inviteRequest");
 					
 					username = inFromClient.readLine();
 					receiver = inFromClient.readLine();
@@ -115,15 +111,34 @@ public class requestHandler implements Runnable {
 				}
 				
 				else if(command.equals("editDoc")) {
-					System.out.println("Thread handling: editRequest");
 					
 					username = inFromClient.readLine();
 					docName = inFromClient.readLine();
 					int section = inFromClient.read();
 					
-					//TODO
-					outToClient.writeBytes("SUCCESS" + '\n');
+					String res = Turing.editDoc(username, docName, section);
 					
+					//TODO
+					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK")) {
+						System.err.println("Non sono qua dentro");
+						outToClient.writeBytes("ERROR" + '\n');
+					}
+					else {
+						System.err.println("Passo ->" + res);
+						outToClient.writeBytes(res + '\n');		//success
+					}
+					
+				}
+				
+				else if (command.equals("endEdit")) {
+					
+					username = inFromClient.readLine();
+					docName = inFromClient.readLine();
+					int section = inFromClient.read();
+					
+					String res = Turing.endEdit(username, docName, section);
+					
+					outToClient.writeBytes(res + '\n');
 				}
 			}
 			catch (Exception e) {
@@ -132,7 +147,6 @@ public class requestHandler implements Runnable {
 					Turing.disconnect(nameServed);
 					break;
 				} catch (IOException e1) {
-					System.err.println("Ciaux");
 					e1.printStackTrace();
 				}
 			}
