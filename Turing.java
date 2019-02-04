@@ -21,6 +21,7 @@ public class Turing {
 	private static ConcurrentHashMap<String, Document> docs;
 	private static Set<String> usersOnline;
 	private static Set<String> usersOffline;
+	private static Set<InetAddress> multicastAddresses;
 	private static int DEFAULT_PORT = 6789;
 	private static ServerSocket welcomeSocket;
 	
@@ -31,6 +32,7 @@ public class Turing {
 		docs = new ConcurrentHashMap<String, Document>();	// <docName, docCreator>
 		usersOnline = new HashSet<String>();
 		usersOffline = new HashSet<String>();
+		multicastAddresses = new HashSet<InetAddress>();
 		welcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
 		
 		e = Executors.newFixedThreadPool(10);
@@ -48,16 +50,26 @@ public class Turing {
 	private static void boredInit() throws UnknownHostException {
 		User asd = new User("asd", "asd");
 		User jkl = new User("jkl", "jkl");
-		InetAddress tmp = InetAddress.getByName("239.249.230.100");
-		Document qwe = new Document("asd", "qwe", 5, tmp);
+		User iop = new User("iop", "iop");
 		
 		usersOffline.add("asd");
 		usersOffline.add("jkl");
+		usersOffline.add("iop");
 		database.put("asd", asd);
 		database.put("jkl", jkl);
-		docs.put("qwe", qwe);
+		database.put("iop", iop);
 		
+		createDoc("asd", "qwe", 5);
+		createDoc("asd", "solodiasd", 3);
+		createDoc("asd", "qwertyuiop", 6);
 		sendInvite("asd", "jkl", "qwe");
+		sendInvite("asd", "jkl", "qwertyuiop");
+		sendInvite("asd", "iop", "qwertyuiop");
+		
+		/*
+		for(int i = 0; i < 10000; i++) {		//per farsi l'ipotetica risata
+			createDoc("asd", "doc"+i, 3);
+		}*/
 	}
 	
 	public static void main(String[] args) throws IOException, AlreadyBoundException {
@@ -66,7 +78,7 @@ public class Turing {
 		
 		boredInit();
 		
-		while (true) {
+		while (true) {		//turing diventa il listener
 			Socket connectionSocket = null;
 			connectionSocket = welcomeSocket.accept();
 			
@@ -107,7 +119,7 @@ public class Turing {
 			System.out.println("Utente " + username + " si è disconnesso.");
 			return true;
 		}
-		
+
 		return false;
 	}
 	
@@ -131,9 +143,12 @@ public class Turing {
 			aux = "239." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256);
 			try {
 				addr = InetAddress.getByName(aux);
+				if(multicastAddresses.contains(addr))
+					System.err.println("Questa stampa è solo per vedere se, in sede d'esame, l'aver gestito questa cosa statisticamente impossibile mi farà fare una risata");
 			} catch (UnknownHostException e) { e.printStackTrace(); }
-		} while(!addr.isMulticastAddress());
+		} while(!addr.isMulticastAddress() && multicastAddresses.contains(addr));
 		
+		multicastAddresses.add(addr);
 		Document d = new Document(creator, docName, sections, addr);
 		
 		synchronized(updateDB) {
@@ -211,7 +226,6 @@ public class Turing {
 		
 		String res = d.getAddr().toString();
 		res = (String) res.subSequence(1, res.length());			//l'indirizzo ha uno / iniziale, lo tolgo
-		System.err.println("--->" + res);
 		return res;
 	}
 
@@ -221,5 +235,29 @@ public class Turing {
 		Document d = docs.get(docName);
 		d.unlockSection(section);
 		return "SUCCESS";
+	}
+	
+	public static String getDocs(String username) {
+		User u = database.get(username);
+		Object[] uDocs = u.getDocs().toArray();
+		String res = null;
+		
+		for(int i = 0; i < uDocs.length; i++) {
+			Document d = docs.get(uDocs[i]);
+			String edtr = d.getEditors();
+			if(edtr == null) {
+				edtr = "Nessuno.";			//evita di mostrare "null" nel risultato del Pannello del client
+			}
+			
+			if(res == null) 
+				res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
+			else
+				res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + d.getEditors();
+			res = res + '\n';		//per dare spazio tra info di un doc ed un altro
+		}
+		
+		res = res + '\n';
+
+		return res;
 	}
 }

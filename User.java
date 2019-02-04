@@ -17,10 +17,8 @@ public class User {
 		return this.username;
 	}
 	
-	public void iHateWarnings() {
-		boolean res = this.password.contains("gnigni");
-		if(res)
-			return;
+	public Set<String> getDocs(){
+		return this.userDocs;
 	}
 	
 	public void addToEditableDocs(String docName) {
@@ -29,5 +27,11 @@ public class User {
 	
 	public boolean isEditor(String docName) {
 		return this.userDocs.contains(docName);
+	}
+	
+	public void iHateWarnings() {		//just to remove the "password" not used warning eheh
+		boolean res = this.password.contains("gnigni");
+		if(res)
+			return;
 	}
 }

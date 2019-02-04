@@ -38,6 +38,7 @@ public class GUIClass extends JFrame {
 	private JLabel userLabel;
 	private JLabel passLabel;
 	private JLabel logo;
+	private boolean offline;
 
 	public GUIClass() {
 		init();
@@ -54,20 +55,21 @@ public class GUIClass extends JFrame {
 	public static void main(String[] args) throws IOException {
 		
 		GUIClass window = new GUIClass();
-		window.getContentPane().setBackground(new java.awt.Color(4, 167, 210));		
+		window.getContentPane().setBackground(new java.awt.Color(0, 172, 230));		
 		window.setLocation(400, 100);
 		window.setVisible(true);
 	}
 
 	private void init() {
+		offline = false;
 		try {
 			clientSocket = new Socket("127.0.0.1", 6789);
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		}
 		catch (Exception e) {
-			System.err.println("Server is not up");
-			this.dispose();
+			System.err.println("Il server non è attivo.");
+			offline = true;
 		}
 	}
 
@@ -110,9 +112,7 @@ public class GUIClass extends JFrame {
 				if(checkTextFields()) {			
 					try {
 						loginRequest();
-					} catch (IOException e) {
-						e.printStackTrace();	//outToServer.writeBytes
-					}
+					} catch (IOException e) { e.printStackTrace(); }
 				}
 			}
 		});
@@ -121,9 +121,7 @@ public class GUIClass extends JFrame {
 			public void actionPerformed(ActionEvent ae) {
 				try {
 					registerRequest();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				} catch (Exception e) {	e.printStackTrace(); }
 			}
 		});
 		
@@ -139,10 +137,25 @@ public class GUIClass extends JFrame {
 	
 	public void registerRequest() throws NotBoundException, RemoteException{
 		
+		if(offline) {
+			JOptionPane.showMessageDialog(null, "Il server è offline. Chiudi il client e riprova.", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
         String inpUser;
         inpUser = userField.getText();
         if(inpUser.length()==0) {
         	JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
+        	return;
+        }
+        
+        if(!inpUser.matches("[a-zA-Z0-9]+")) { 
+        	JOptionPane.showMessageDialog(null, "Il campo username presenta caratteri non validi.", "Error", JOptionPane.ERROR_MESSAGE);
+        	return;
+		}
+        
+        if(inpUser.length() > 25) {
+        	JOptionPane.showMessageDialog(null, "Dubito ti serva un nome così lungo, non creare bugs!");
         	return;
         }
 
@@ -182,6 +195,11 @@ public class GUIClass extends JFrame {
 	
 	public void loginRequest() throws IOException{
 		
+		if(offline) {
+			JOptionPane.showMessageDialog(null, "Il server è offline. Chiudi il client e riprova.", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
 		outToServer.writeBytes("login" + '\n');
 		
         String inpUser, inpPass;
@@ -198,7 +216,7 @@ public class GUIClass extends JFrame {
 		if(res.equals("SUCCESS")) {
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, inpUser);
-			w.getContentPane().setBackground(new java.awt.Color(173, 178, 184));
+			w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));	//new java.awt.Color(173, 178, 184));
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}
@@ -209,8 +227,10 @@ public class GUIClass extends JFrame {
 		else if(res.equals("LOGGED_ALRD"))
 			JOptionPane.showMessageDialog(null, "You are already logged in.");
 		
-		else
+		else {
+			System.err.println("Client - loginRequest: " + res);
 			JOptionPane.showMessageDialog(null, "Something weird happened.");
+		}
 		
 	}
 	

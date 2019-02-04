@@ -28,7 +28,7 @@ public class GUIEditClass extends JFrame {
 	private String username;
 	private String docName;
 	private int section;
-	private JButton sendMsg, endEdit;
+	private JButton sendMsgButton, endEditButton;
 	private JLabel userLabel;
 	private JTextArea chatArea, msgArea; 
 	private JScrollPane scrollPane; 
@@ -85,18 +85,18 @@ public class GUIEditClass extends JFrame {
 		endEditImg = endEditImg.getScaledInstance(40, 40, Image.SCALE_DEFAULT);
 		sendMsgImg = sendMsgImg.getScaledInstance(40, 40, Image.SCALE_DEFAULT);
 		
-		sendMsg = new JButton();
-		endEdit = new JButton();
+		sendMsgButton = new JButton();
+		endEditButton = new JButton();
 		
-		sendMsg.setIcon(new ImageIcon(sendMsgImg));
-		endEdit.setIcon(new ImageIcon(endEditImg));
+		sendMsgButton.setIcon(new ImageIcon(sendMsgImg));
+		endEditButton.setIcon(new ImageIcon(endEditImg));
 		
 		chatArea.setBounds(35, 40, 365, 290);
 		msgArea.setBounds(90, 340, 255, 50);
-		sendMsg.setBounds(350, 340, 50, 50);
-		endEdit.setBounds(35, 340, 50, 50);
+		sendMsgButton.setBounds(350, 340, 50, 50);
+		endEditButton.setBounds(35, 340, 50, 50);
 		
-		sendMsg.addActionListener(new ActionListener() { 
+		sendMsgButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae) {
 				try {
 					sendMsg();
@@ -106,7 +106,7 @@ public class GUIEditClass extends JFrame {
 			}
 		});
 		
-		endEdit.addActionListener(new ActionListener() { 
+		endEditButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae) {
 				//uploadFile
 				c.disable();
@@ -119,14 +119,14 @@ public class GUIEditClass extends JFrame {
 
 		add(msgArea);
 		add(chatArea);
-		add(sendMsg);
-		add(endEdit);
+		add(sendMsgButton);
+		add(endEditButton);
 		
 		userLabel = new JLabel("Current user: " + username);
 		userLabel.setBounds(13, 13, 200, 15);
 		add(userLabel);
 		
-		SwingUtilities.getRootPane(sendMsg).setDefaultButton(sendMsg);
+		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);
 	}
 
 	private void sendMsg() throws IOException {
@@ -143,6 +143,7 @@ public class GUIEditClass extends JFrame {
 	
 	private void connectAlert(String msg) throws IOException {
 		if(msg.length() > 0) {
+			//crypt(msg)			se avanza tempo
 			byte[] m = msg.getBytes();
 			DatagramPacket packet = new DatagramPacket(m, m.length, group, port);
 			chatSocket.send(packet);
@@ -161,7 +162,7 @@ public class GUIEditClass extends JFrame {
 		if(res == "SUCCESS") {
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, username);
-			w.getContentPane().setBackground(new java.awt.Color(173, 178, 184));
+			w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));	//new java.awt.Color(173, 178, 184));
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}

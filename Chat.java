@@ -27,10 +27,10 @@ public class Chat implements Runnable {
 		while(running) {
 			
 			DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-			System.out.println("Waiting for pkt..");
 			socket.receive(packet);
 		
 			String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+			//msg = decrypt(msg);			se avanza tempo
 			chat.append(msg + '\n');
 			/*
 			catch (SocketTimeoutException e) {
@@ -40,7 +40,7 @@ public class Chat implements Runnable {
 		}
 		socket.leaveGroup(group);
 	}
-	
+
 	public void disable() {
 		running = false;
 	}

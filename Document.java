@@ -58,13 +58,26 @@ public class Document {
 		return locks.get(section).tryLock();
 	}
 	
+	public void unlockSection(int section) {
+		locks.get(section).unlock();
+	}
+	
 	public List<File> showDoc() {
 		//CHANGE EHEH
 		System.err.println("DEVI ANCORA IMPLEMENTARMI SCEEEEEMO [showDoc - Document.java]");
 		return this.section;
 	}
 
-	public void unlockSection(int section) {
-		locks.get(section).unlock();
+	public String getEditors() {
+		String res = null;
+		
+		for(int i = 0; i < editors.size(); i++) {
+			if (res == null)
+				res = editors.get(i);
+			else
+				res = res + ", " + editors.get(i);
+		}
+		
+		return res;
 	}
 }

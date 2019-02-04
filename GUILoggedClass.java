@@ -1,4 +1,5 @@
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -49,12 +50,12 @@ public class GUILoggedClass extends JFrame {
 		editImg = ImageIO.read(new File("img/edit.png"));
 		logoutImg = ImageIO.read(new File("img/logout.png"));
 		
-		createDocImg = createDocImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);			
-		inviteImg = inviteImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);			
-		showImg = showImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);			
-		listImg = listImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);			
-		editImg = editImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);			
-		logoutImg = logoutImg.getScaledInstance(100, 100, Image.SCALE_DEFAULT);
+		createDocImg = createDocImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);			
+		inviteImg = inviteImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);			
+		showImg = showImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);			
+		listImg = listImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);			
+		editImg = editImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);			
+		logoutImg = logoutImg.getScaledInstance(80, 80, Image.SCALE_DEFAULT);
 		
 		createDocButton = new JButton();
 		createDocButton.setIcon(new ImageIcon(createDocImg));
@@ -143,9 +144,9 @@ public class GUILoggedClass extends JFrame {
 		add(editButton);
 		add(logoutButton);
 
-			
 		userLabel = new JLabel("Current user: " + username);
-		userLabel.setBounds(20, 20, 200, 15);
+		userLabel.setBounds(160, 20, 200, 15);
+		userLabel.setFont(new Font("Franklin Gothic Medium", Font.PLAIN, 15));
 		add(userLabel);
 	}
 	
@@ -158,7 +159,6 @@ public class GUILoggedClass extends JFrame {
 				"Nome Documento:", docLabel,
 				"Numero Sezioni [1-9]:", secLabel
 		};
-		
 		
 		String res, docName = null;
 		int sections; 
@@ -220,14 +220,12 @@ public class GUILoggedClass extends JFrame {
 		String res, user = null, docName = null; 
 		
 		do {
-			
 			int option = JOptionPane.showConfirmDialog(null, struct, "Invito a Documento", JOptionPane.OK_CANCEL_OPTION);
 			
 			if (option == JOptionPane.OK_OPTION) {
 				docName = docLabel.getText();
 				user = usLabel.getText();
 			}
-			
 			else
 				return;
 		} while (docName == null || user == null);
@@ -261,7 +259,6 @@ public class GUILoggedClass extends JFrame {
 				break;
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
-				System.err.println(res);
 				break;
 		}
 		
@@ -324,11 +321,33 @@ public class GUILoggedClass extends JFrame {
 		
 		outToServer.writeBytes(username + '\n');
 		
-		String res = inFromServer.readLine();
+		String res = null, tmp = null;
+		int check = 0;
 		
-		switch(res) {
+		do {
+			tmp = inFromServer.readLine();
+			
+			if(tmp.length() < 1) {	//il server manda uno \n per ogni riga ed alla fine un ulteriore \n, contandoli so quando ho finito
+				check++;
+				res = res + '\n';
+			}
+
+			else {
+				check = 0;
+				if(res == null)
+					res = tmp + '\n';
+				else
+					res = res + tmp + '\n';
+			}
+		} while(check < 2);
+
+
+		if(res != null) 
+			tmp = "SUCCESS";
+		
+		switch(tmp) {
 			case "SUCCESS":
-				JOptionPane.showMessageDialog(null, "Lista Documenti: " );
+				JOptionPane.showMessageDialog(null, "Lista Documenti: \n\n" + res );
 				break;
 				//TODO
 			default:
@@ -389,11 +408,10 @@ public class GUILoggedClass extends JFrame {
 		
 		switch(res) {
 			case "SUCCESS":
-				System.out.println("Client: passo in modalità Editing");
 				this.dispose();
 				GUIEditClass w = new GUIEditClass(outToServer, inFromServer, clientSocket, username, tmp, docName, section);
 				username = "";
-				w.getContentPane().setBackground(Color.LIGHT_GRAY);
+				w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));
 				w.setLocation(400, 100);
 				w.setVisible(true);
 				break;
@@ -418,7 +436,7 @@ public class GUILoggedClass extends JFrame {
 			username = "";
 			this.dispose();
 			GUIClass w = new GUIClass(outToServer, inFromServer, clientSocket);
-			w.getContentPane().setBackground(new java.awt.Color(4, 167, 210));	
+			w.getContentPane().setBackground(new java.awt.Color(0, 172, 230));	
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}

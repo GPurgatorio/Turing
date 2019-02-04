@@ -60,7 +60,6 @@ public class requestHandler implements Runnable {
 						answer = "SUCCESS" + '\n';
 					
 					outToClient.writeBytes(answer);
-					
 				}
 				
 				else if(command.equals("createDoc")) {
@@ -106,8 +105,7 @@ public class requestHandler implements Runnable {
 					else
 						answer = "ERROR" + '\n';
 					
-					outToClient.writeBytes(answer);
-					
+					outToClient.writeBytes(answer);	
 				}
 				
 				else if(command.equals("editDoc")) {
@@ -119,14 +117,10 @@ public class requestHandler implements Runnable {
 					String res = Turing.editDoc(username, docName, section);
 					
 					//TODO
-					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK")) {
-						System.err.println("Non sono qua dentro");
+					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK")) 
 						outToClient.writeBytes("ERROR" + '\n');
-					}
-					else {
-						System.err.println("Passo ->" + res);
+					else 
 						outToClient.writeBytes(res + '\n');		//success
-					}
 					
 				}
 				
@@ -140,11 +134,21 @@ public class requestHandler implements Runnable {
 					
 					outToClient.writeBytes(res + '\n');
 				}
+				
+				else if (command.equals("list")) {
+					
+					username = inFromClient.readLine();
+					
+					String res = Turing.getDocs(username);
+					
+					outToClient.writeBytes(res + '\n');
+				}
 			}
 			catch (Exception e) {
 				try {
 					clientSocket.close();
 					Turing.disconnect(nameServed);
+					flag = false;
 					break;
 				} catch (IOException e1) {
 					e1.printStackTrace();
