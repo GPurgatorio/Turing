@@ -63,12 +63,12 @@ public class GUIClass extends JFrame {
 	private void init() {
 		offline = false;
 		try {
-			clientSocket = new Socket("127.0.0.1", 6789);
+			clientSocket = new Socket("localhost", 6789);
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		}
 		catch (Exception e) {
-			System.err.println("Il server non è attivo.");
+			JOptionPane.showMessageDialog(null, "Il server è offline!", "Error", JOptionPane.ERROR_MESSAGE);
 			offline = true;
 		}
 	}
@@ -155,7 +155,7 @@ public class GUIClass extends JFrame {
 		}
         
         if(inpUser.length() > 25) {
-        	JOptionPane.showMessageDialog(null, "Dubito ti serva un nome così lungo, non creare bugs!");
+        	JOptionPane.showMessageDialog(null, "Non puoi registrare un nome così lungo. Riprova", "Warning", JOptionPane.WARNING_MESSAGE);
         	return;
         }
 
@@ -172,21 +172,21 @@ public class GUIClass extends JFrame {
         boolean res = stub.registerRequest(inpUser, inpPass);
 		
 		if(res)
-			JOptionPane.showMessageDialog(null, "Utente registrato con successo!");
+			JOptionPane.showMessageDialog(null, "Utente registrato con successo!", "Success", JOptionPane.INFORMATION_MESSAGE);
 		else
-			JOptionPane.showMessageDialog(null, "Esiste già un utente registrato con questo nome.");
+			JOptionPane.showMessageDialog(null, "Esiste già un utente registrato con questo nome.", "Error", JOptionPane.ERROR_MESSAGE);
 		
 	}
 
 	private boolean checkTextFields() {
 		
 		if(userField.getText().length()==0) {
-        	JOptionPane.showMessageDialog(null, "Inserisci Username");
+			JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
         	return false;
 		}
         	
 		if(passField.getPassword().length==0) {
-			JOptionPane.showMessageDialog(null, "Inserisci Password");
+			JOptionPane.showMessageDialog(null, "Inserisci una Password.", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
 		
@@ -222,14 +222,14 @@ public class GUIClass extends JFrame {
 		}
 		
 		else if(res.equals("UNKNWN_USR"))
-			JOptionPane.showMessageDialog(null, "Username o Password errati.");
+			JOptionPane.showMessageDialog(null, "Username o Password errati.", "Error", JOptionPane.ERROR_MESSAGE);
 		
 		else if(res.equals("LOGGED_ALRD"))
-			JOptionPane.showMessageDialog(null, "You are already logged in.");
+			JOptionPane.showMessageDialog(null, "L'utente risulta essere già connesso.", "Error", JOptionPane.ERROR_MESSAGE);
 		
 		else {
 			System.err.println("Client - loginRequest: " + res);
-			JOptionPane.showMessageDialog(null, "Something weird happened.");
+			JOptionPane.showMessageDialog(null, "Errore generico.", "Error", JOptionPane.ERROR_MESSAGE);
 		}
 		
 	}

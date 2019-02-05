@@ -3,19 +3,25 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.Iterator;
+import java.util.Set;
 
 public class requestHandler implements Runnable {
 
 	private String nameServed = "";
-	private static Socket clientSocket;
-	private static BufferedReader inFromClient;
-	private static DataOutputStream outToClient;
+	private String docServed = "";
+	private int sectionDoc;
+	private Socket clientSocket;
+	private BufferedReader inFromClient;
+	private DataOutputStream outToClient;
+
 	
 	
 	public requestHandler(Socket s) throws IOException {
 		clientSocket = s;
 		inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		outToClient = new DataOutputStream(clientSocket.getOutputStream());
+		sectionDoc = -1;
 	}
 	
 	@Override
@@ -48,6 +54,9 @@ public class requestHandler implements Runnable {
 						answer = "SUCCESS" + '\n';
 					
 					outToClient.writeBytes(answer);
+					
+					sendPendingInvites();
+					
 				}
 			
 			
@@ -113,6 +122,8 @@ public class requestHandler implements Runnable {
 					username = inFromClient.readLine();
 					docName = inFromClient.readLine();
 					int section = inFromClient.read();
+					docServed = docName;
+					sectionDoc = section;
 					
 					String res = Turing.editDoc(username, docName, section);
 					
@@ -132,6 +143,8 @@ public class requestHandler implements Runnable {
 					
 					String res = Turing.endEdit(username, docName, section);
 					
+					sectionDoc = -1;
+					docServed = "";
 					outToClient.writeBytes(res + '\n');
 				}
 				
@@ -148,14 +161,36 @@ public class requestHandler implements Runnable {
 				try {
 					clientSocket.close();
 					Turing.disconnect(nameServed);
+					if(sectionDoc != -1) 			//unlock
+						Turing.endEdit(nameServed, docServed, sectionDoc);
 					flag = false;
-					break;
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 			}
 			
 		} while(flag);
+	}
+
+	private void sendPendingInvites() {
+		try {
+			
+			Set<String> tmp = Turing.getPendingInvites(nameServed);
+			
+			if(tmp != null) {
+				Iterator<String> it = tmp.iterator();
+				while(it.hasNext()) {
+					String x = it.next();
+					outToClient.writeBytes(x + '\n');
+				}
+			}
+
+			outToClient.writeByte('\n');		//notifica la fine dei documenti (N.B. non possono esistere documenti con questo nome!)
+			
+			Turing.resetInvites(nameServed);
+		
+		} catch (IOException e) { e.printStackTrace(); }
+		
 	}
 
 }

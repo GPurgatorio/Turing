@@ -49,10 +49,7 @@ public class Chat implements Runnable {
 	public void run() {
 		try {
 			listen();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		} catch (IOException e) { e.printStackTrace(); }
 		
 	}
 }

@@ -1,6 +1,8 @@
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -49,6 +51,8 @@ public class GUIEditClass extends JFrame {
 		docName = doc;
 		section = sec;
 		
+		downloadFile();
+		
 		port = 4321;			//(int) (Math.random() * 16383) + 49152;
 		chatSocket = new MulticastSocket(port);
 		group = InetAddress.getByName(addr);
@@ -71,6 +75,11 @@ public class GUIEditClass extends JFrame {
 		connectAlert(username + " si è connesso.");
 		
 		editUI();
+	}
+
+	private void downloadFile() {
+		// TODO Auto-generated method stub
+		
 	}
 
 	private void editUI() throws IOException {
@@ -100,9 +109,7 @@ public class GUIEditClass extends JFrame {
 			public void actionPerformed(ActionEvent ae) {
 				try {
 					sendMsg();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -115,6 +122,25 @@ public class GUIEditClass extends JFrame {
 					loggedUI();
 				} catch (IOException e) { e.printStackTrace(); }
 			}
+		});
+		
+		msgArea.addKeyListener(new KeyListener(){
+
+            public void keyPressed(KeyEvent e) {
+				if(e.getKeyCode() == KeyEvent.VK_ENTER) {
+				      try {
+						sendMsg();
+					} catch (IOException e1) { e1.printStackTrace(); }
+				}
+            }
+            
+			@Override
+			public void keyReleased(KeyEvent e) {
+				if(e.getKeyCode() == KeyEvent.VK_ENTER) 
+					msgArea.setText("");
+			}
+			@Override
+			public void keyTyped(KeyEvent e) {;}
 		});
 
 		add(msgArea);

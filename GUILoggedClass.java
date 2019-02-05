@@ -1,4 +1,3 @@
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
@@ -7,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 
 import javax.imageio.ImageIO;
@@ -35,6 +35,19 @@ public class GUILoggedClass extends JFrame {
 		clientSocket = s;
 		username = usr;
 		clientUI();
+		checkPendingInvites();
+	}
+
+	private void checkPendingInvites() throws IOException {
+		
+		String res = null;
+		do {
+			res = inFromServer.readLine();
+			
+			if(res.length() > 0)
+				JOptionPane.showMessageDialog(null, "Sei stato invitato al documento:\n" + res, "Pending Invite", JOptionPane.INFORMATION_MESSAGE);
+		
+		} while(res.length() != 0);
 	}
 
 	public void clientUI() throws IOException {

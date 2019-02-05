@@ -1,8 +1,10 @@
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.channels.SocketChannel;
 import java.rmi.AlreadyBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -78,11 +80,16 @@ public class Turing {
 		
 		boredInit();
 		
+		PendingInvites p = new PendingInvites();
+		p.start();
+		
+		Socket connectionSocket;
+		
 		while (true) {		//turing diventa il listener
-			Socket connectionSocket = null;
+			connectionSocket = null;
 			connectionSocket = welcomeSocket.accept();
 			
-			System.out.println("Server - A client just connected.");
+			System.out.println("Server: Un client si è connesso.");
 			e.execute(new requestHandler(connectionSocket));
 		}
 	}
@@ -109,6 +116,20 @@ public class Turing {
 		
 		System.err.println("Tentativo di login con credenziali errate.");
 		return -2;
+	}
+	
+	static Set<String> getPendingInvites(String username) {
+		
+		User u = database.get(username);
+		Set<String> tmp = null;
+		
+		if(u == null) {
+			System.err.println("Ecchissei");
+			return tmp;
+		}
+		
+		return u.getPendingInvites();
+		
 	}
 
 	static boolean disconnect (String username) {
@@ -156,6 +177,16 @@ public class Turing {
 			database.get(creator).addToEditableDocs(docName);
 		}
 		
+		File dir = new File(docName);
+		dir.mkdir();
+		
+		for(int i = 0; i < sections; i++) {
+			File x = new File(docName, docName + i + ".txt");
+			try {
+				x.createNewFile();
+			} catch (IOException e) { e.printStackTrace(); }
+		}
+		
 		System.out.println("Il documento " + docName + " è stato creato da " + creator);
 		
 		return 0;
@@ -192,9 +223,17 @@ public class Turing {
 			return -5;
 		}
 		
-		synchronized(updateDB) {
-			docs.get(docName).addEditor(receiver);
-			rec.addToEditableDocs(docName);
+		if(usersOnline.contains(receiver)) {		//l'utente è online, scrivo immediatamente
+			System.err.println("Devo dire al thread di supporto di scrivere sul listener del thread (???)");
+			rec.addInstaInvites(docName);
+		}
+		
+		else {										//l'utente è offline, salvo
+			synchronized(updateDB) {
+				docs.get(docName).addEditor(receiver);
+				rec.addPendingInvite(docName);
+				rec.addToEditableDocs(docName);
+			}
 		}
 
 		System.out.println(sender + " ha invitato " + receiver + " come editor del documento " + docName);
@@ -229,7 +268,7 @@ public class Turing {
 		return res;
 	}
 
-	public static String endEdit(String username, String docName, int section) {
+	static String endEdit(String username, String docName, int section) {
 		
 		//TODO
 		Document d = docs.get(docName);
@@ -237,7 +276,7 @@ public class Turing {
 		return "SUCCESS";
 	}
 	
-	public static String getDocs(String username) {
+	static String getDocs(String username) {
 		User u = database.get(username);
 		Object[] uDocs = u.getDocs().toArray();
 		String res = null;
@@ -252,12 +291,35 @@ public class Turing {
 			if(res == null) 
 				res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
 			else
-				res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + d.getEditors();
+				res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
 			res = res + '\n';		//per dare spazio tra info di un doc ed un altro
 		}
 		
 		res = res + '\n';
 
 		return res;
+	}
+
+	public static void sendSection(SocketChannel sc) {
+		
+	}
+
+	static void resetInvites(String username) {
+		
+		User u = database.get(username);
+		u.resetPendingInvites();
+		
+	}
+
+	public static Set<String> getInstaInvites(String nameServed) {
+		User u = database.get(nameServed);
+		Set<String> tmp = null;
+		
+		if(u == null) {
+			System.err.println("Ecchissei");
+			return tmp;
+		}
+		
+		return u.getInstaInvites();
 	}
 }
