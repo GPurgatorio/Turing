@@ -67,7 +67,6 @@ public class Turing {
 		sendInvite("asd", "jkl", "qwe");
 		sendInvite("asd", "jkl", "qwertyuiop");
 		sendInvite("asd", "iop", "qwertyuiop");
-		
 		/*
 		for(int i = 0; i < 10000; i++) {		//per farsi l'ipotetica risata
 			createDoc("asd", "doc"+i, 3);
@@ -102,7 +101,7 @@ public class Turing {
 	
 	static int login(String username, String password) {
 		
-		if(usersOffline.contains(username)) {
+		if(usersOffline.contains(username) && database.get(username).checkPassword(password)) {
 			usersOffline.remove(username);
 			usersOnline.add(username);
 			System.out.println("Utente " + username + " si è connesso.");
@@ -224,8 +223,12 @@ public class Turing {
 		}
 		
 		if(usersOnline.contains(receiver)) {		//l'utente è online, scrivo immediatamente
-			System.err.println("Devo dire al thread di supporto di scrivere sul listener del thread (???)");
-			rec.addInstaInvites(docName);
+			synchronized(updateDB) {
+				docs.get(docName).addEditor(receiver);
+				rec.addInstaInvites(docName);
+				rec.addToEditableDocs(docName);
+			}
+			System.out.println(sender + " ha invitato (live)  " + receiver + " come editor del documento " + docName);
 		}
 		
 		else {										//l'utente è offline, salvo
@@ -234,9 +237,8 @@ public class Turing {
 				rec.addPendingInvite(docName);
 				rec.addToEditableDocs(docName);
 			}
+			System.out.println(sender + " ha invitato (pending) " + receiver + " come editor del documento " + docName);
 		}
-
-		System.out.println(sender + " ha invitato " + receiver + " come editor del documento " + docName);
 		
 		return 0;
 	}
@@ -304,13 +306,6 @@ public class Turing {
 		
 	}
 
-	static void resetInvites(String username) {
-		
-		User u = database.get(username);
-		u.resetPendingInvites();
-		
-	}
-
 	public static Set<String> getInstaInvites(String nameServed) {
 		User u = database.get(nameServed);
 		Set<String> tmp = null;
@@ -320,6 +315,16 @@ public class Turing {
 			return tmp;
 		}
 		
-		return u.getInstaInvites();
+		tmp = u.getInstaInvites();
+		
+		return tmp;
+	}
+	
+	static void resetInvites(String username) {
+		database.get(username).resetPendingInvites();
+	}
+
+	public static void resetInstaInvites(String username) {
+		database.get(username).resetInstaInvites();
 	}
 }

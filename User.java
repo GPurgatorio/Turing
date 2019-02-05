@@ -14,6 +14,7 @@ public class User {
 		this.password = password;
 		this.userDocs = new HashSet<String>();
 		this.pendingInvites = new HashSet<String>();
+		this.instaInvites = new HashSet<String>();
 	}
 	
 	public String getUser() {
@@ -32,10 +33,8 @@ public class User {
 		return this.userDocs.contains(docName);
 	}
 	
-	public void iHateWarnings() {		//just to remove the "password" not used warning eheh
-		boolean res = this.password.contains("gnigni");
-		if(res)
-			return;
+	public boolean checkPassword(String pwd) {		//just to remove the "password" not used warning eheh
+		return this.password.equals(pwd);
 	}
 
 	public void addPendingInvite(String docName) {

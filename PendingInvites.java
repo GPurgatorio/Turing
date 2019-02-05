@@ -8,29 +8,29 @@ import java.util.concurrent.Executors;
 
 public class PendingInvites extends Thread {
 	
-	private ServerSocket welcomeSocket;
+	private ServerSocket pendWelcomeSocket;
 	private final int DEFAULT_PORT;
-	private ExecutorService e;
+	private ExecutorService pend_e;
 	
 	public PendingInvites() throws UnknownHostException, IOException {
 		DEFAULT_PORT = 6788;
-		welcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
-		e = Executors.newFixedThreadPool(10);
+		pendWelcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
+		pend_e = Executors.newFixedThreadPool(10);
 	}
 	
 	public void run() {
 		
 		System.out.println("Server di supporto per inviti attivato");
 		while(true) {
-			Socket connectionSocket;
+			Socket pendConnectionSocket;
 			
 			while (true) {		//listener
 				try {
-					connectionSocket = null;
-					connectionSocket = welcomeSocket.accept();
+					pendConnectionSocket = null;
+					pendConnectionSocket = pendWelcomeSocket.accept();
 					
-					System.out.println("Un client è ora connesso per gli inviti in diretta.");
-					e.execute(new pendingInviteHandler(connectionSocket));
+					//System.out.println("Un client è ora connesso per gli inviti in diretta.");
+					pend_e.execute(new pendingInviteHandler(pendConnectionSocket));
 					
 				} catch (IOException e) { e.printStackTrace(); }
 			}

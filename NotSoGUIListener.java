@@ -3,6 +3,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 import javax.swing.JOptionPane;
 
@@ -25,16 +26,21 @@ public class NotSoGUIListener extends Thread {
 	public void run() {
 		
 		try {
-			pendOTS.writeBytes(username);
-		} catch (IOException e1) { return; }
+			pendOTS.writeBytes(username + '\n');
+		} catch (IOException e1) { e1.printStackTrace(); }
 		
 		do {
 			try {
-				pendSocket.setSoTimeout(100);
 				String instaInvite = pendIFS.readLine();
-				JOptionPane.showMessageDialog(null, "Sei stato invitato al documento " + instaInvite, "Invite", JOptionPane.INFORMATION_MESSAGE);
-			} catch (IOException e) { ; } 
+				if(instaInvite != null && instaInvite.length() > 0)
+					JOptionPane.showMessageDialog(null, "Sei appena stato invitato al documento:\n " + instaInvite, "Live Invite", JOptionPane.INFORMATION_MESSAGE);
+			} catch (SocketException | SocketTimeoutException e) { ; } 
+			catch (IOException e1) {e1.printStackTrace();}
 		} while(running);
+		
+		try {
+			pendSocket.close();
+		} catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	public void disable() {

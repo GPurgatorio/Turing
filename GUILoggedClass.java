@@ -25,6 +25,7 @@ public class GUILoggedClass extends JFrame {
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
+	private static NotSoGUIListener l;
 	private Image createDocImg, inviteImg, showImg, listImg, editImg, logoutImg;
 	private JButton createDocButton, inviteButton, editButton, listButton, showButton, logoutButton;
 	private JLabel userLabel;
@@ -35,11 +36,33 @@ public class GUILoggedClass extends JFrame {
 		clientSocket = s;
 		username = usr;
 		clientUI();
+		invitesListener();
 		checkPendingInvites();
+		System.out.println("Console di: " + username);
+	}
+
+	private void invitesListener() {
+		
+		Socket pendSocket = null;
+		BufferedReader pendIFS = null;
+		DataOutputStream pendOTS = null;
+		
+		try {
+			pendSocket = new Socket("localhost", 6788);
+			pendOTS = new DataOutputStream(pendSocket.getOutputStream());
+			pendIFS = new BufferedReader(new InputStreamReader(pendSocket.getInputStream()));
+		}
+		catch (Exception e) {
+			JOptionPane.showMessageDialog(null, "Il server di supporto è offline!", "Error", JOptionPane.ERROR_MESSAGE);
+		}
+		
+		l = new NotSoGUIListener(pendSocket, pendOTS, pendIFS, username);
+		l.start();
+		
 	}
 
 	private void checkPendingInvites() throws IOException {
-		
+	
 		String res = null;
 		do {
 			res = inFromServer.readLine();
@@ -249,7 +272,12 @@ public class GUILoggedClass extends JFrame {
 		outToServer.writeBytes(user + '\n');
 		outToServer.writeBytes(docName + '\n');
 		
-		res = inFromServer.readLine();		
+		res = inFromServer.readLine();
+		
+		if(res == null) {
+			System.err.println("res è null");
+			return;
+		}
 		
 		switch(res) {
 			case "SUCCESS":
@@ -447,6 +475,7 @@ public class GUILoggedClass extends JFrame {
 		
 		if(!res.equals("ERROR")) {
 			username = "";
+			l.disable();
 			this.dispose();
 			GUIClass w = new GUIClass(outToServer, inFromServer, clientSocket);
 			w.getContentPane().setBackground(new java.awt.Color(0, 172, 230));	

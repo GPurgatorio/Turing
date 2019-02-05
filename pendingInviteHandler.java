@@ -9,41 +9,39 @@ import java.util.Set;
 
 public class pendingInviteHandler implements Runnable {
 
-	private String nameServed = "";
-	private Socket clientSocket;
-	private BufferedReader inFromClient;
-	private DataOutputStream outToClient;
+	private String nameServed;
+	private Socket pendClientSocket;
+	private BufferedReader pendIFC;
+	private DataOutputStream pendOTC;
 	
 	public pendingInviteHandler(Socket s) throws IOException {
-		clientSocket = s;
-		inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-		outToClient = new DataOutputStream(clientSocket.getOutputStream());
+		pendClientSocket = s;
+		pendIFC = new BufferedReader(new InputStreamReader(pendClientSocket.getInputStream()));
+		pendOTC = new DataOutputStream(pendClientSocket.getOutputStream());
 	}
 	
 	@Override
 	public void run() {
-		
 		try {
-			do {
-				try {
-					nameServed = inFromClient.readLine();
-				} catch (SocketException e) { ; }
-			} while(nameServed.length() == 0);
-			
-			System.err.println("--->" + nameServed);
-			
-			Set<String> tmp = Turing.getInstaInvites(nameServed);
-			if(!tmp.isEmpty()) {
-				Iterator<String> it = tmp.iterator();
-				while(it.hasNext()) {
-					outToClient.writeBytes(it.next() + '\n');
+			nameServed = pendIFC.readLine();
+		} catch (IOException e2) { e2.printStackTrace(); }
+		
+		boolean running = true;
+		
+		while(running) {
+			try {
+				Set<String> tmp = Turing.getInstaInvites(nameServed);
+				if(!tmp.isEmpty()) {
+					Iterator<String> it = tmp.iterator();
+					while(it.hasNext())
+						pendOTC.writeBytes(it.next() + '\n');
 				}
-			}
-
-			outToClient.writeByte('\n');		//notifica la fine dei documenti (N.B. non possono esistere documenti con questo nome!)
-			clientSocket.close();
-			
-		} catch (IOException e) { e.printStackTrace(); }
-		catch (NullPointerException e1) { ; }		//nameServed.length() lancia NPE altrimenti, devo ignorarlo
+				Turing.resetInstaInvites(nameServed);
+				pendOTC.writeByte('\n');		//quando il client si sconnetterà, 
+				//questa writeByte fallirà lanciando una SocketException che setterà running a false per far terminare questo runnable
+				//la write non è problematica per gli inviti in quanto controllo che non siano null per stamparli!
+			} catch(SocketException e1) { running = false;  }
+			catch (IOException e) { e.printStackTrace(); }
+		}
 	}
 }

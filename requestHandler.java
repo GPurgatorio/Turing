@@ -33,7 +33,7 @@ public class requestHandler implements Runnable {
 				
 				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();
-				System.out.println("Thread - Serving a " + command + " request.");
+				//System.out.println("Thread - Serving a " + command + " request.");
 				
 				if(command.equals("login")) {
 					
