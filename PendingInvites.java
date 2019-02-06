@@ -9,13 +9,11 @@ import java.util.concurrent.Executors;
 public class PendingInvites extends Thread {
 	
 	private ServerSocket pendWelcomeSocket;
-	private final int DEFAULT_PORT;
 	private ExecutorService pend_e;
 	
 	public PendingInvites() throws UnknownHostException, IOException {
-		DEFAULT_PORT = 6788;
-		pendWelcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
-		pend_e = Executors.newFixedThreadPool(10);
+		pendWelcomeSocket  = new ServerSocket(Configurations.INVITE_PORT, 0, InetAddress.getByName(null));
+		pend_e = Executors.newFixedThreadPool(Configurations.THREADPOOL_EX_THREADS);
 	}
 	
 	public void run() {

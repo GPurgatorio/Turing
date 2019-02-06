@@ -22,9 +22,10 @@ public class pendingInviteHandler implements Runnable {
 	
 	@Override
 	public void run() {
+		
 		try {
 			nameServed = pendIFC.readLine();
-		} catch (IOException e2) { e2.printStackTrace(); }
+		} catch (IOException e) { e.printStackTrace(); }
 		
 		boolean running = true;
 		
@@ -40,8 +41,8 @@ public class pendingInviteHandler implements Runnable {
 				pendOTC.writeByte('\n');		//quando il client si sconnetterà, 
 				//questa writeByte fallirà lanciando una SocketException che setterà running a false per far terminare questo runnable
 				//la write non è problematica per gli inviti in quanto controllo che non siano null per stamparli!
-			} catch(SocketException e1) { running = false;  }
-			catch (IOException e) { e.printStackTrace(); }
+			} catch(SocketException e) { running = false;  }
+			catch (IOException e1) { e1.printStackTrace(); }
 		}
 	}
 }

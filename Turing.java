@@ -24,7 +24,6 @@ public class Turing {
 	private static Set<String> usersOnline;
 	private static Set<String> usersOffline;
 	private static Set<InetAddress> multicastAddresses;
-	private static int DEFAULT_PORT = 6789;
 	private static ServerSocket welcomeSocket;
 	
 	private static void init() throws UnknownHostException, IOException, AlreadyBoundException {
@@ -35,18 +34,16 @@ public class Turing {
 		usersOnline = new HashSet<String>();
 		usersOffline = new HashSet<String>();
 		multicastAddresses = new HashSet<InetAddress>();
-		welcomeSocket  = new ServerSocket(DEFAULT_PORT, 0, InetAddress.getByName(null));
+		welcomeSocket  = new ServerSocket(Configurations.DEFAULT_PORT, 0, InetAddress.getByName(null));
 		
-		e = Executors.newFixedThreadPool(10);
+		e = Executors.newFixedThreadPool(Configurations.THREADPOOL_EX_THREADS);
 		
 		RegistrationRMI obj = new RegistrationRMI(database, usersOffline, usersOnline);
         RegistrationInterface stub = (RegistrationInterface) UnicastRemoteObject.exportObject(obj, 0);
 
         // Bind the remote object's stub in the registry
-        Registry registry = LocateRegistry.createRegistry(1099);
+        Registry registry = LocateRegistry.createRegistry(Configurations.REGISTRATION_PORT);
         registry.bind(RegistrationInterface.SERVICE_NAME, stub);
-
-        System.out.println("Server ready");
 	}
 	
 	private static void boredInit() throws UnknownHostException {
@@ -84,7 +81,7 @@ public class Turing {
 		
 		Socket connectionSocket;
 		
-		while (true) {		//turing diventa il listener
+		while (true) {							//turing diventa il listener
 			connectionSocket = null;
 			connectionSocket = welcomeSocket.accept();
 			
@@ -123,12 +120,12 @@ public class Turing {
 		Set<String> tmp = null;
 		
 		if(u == null) {
-			System.err.println("Ecchissei");
+			if(Configurations.DEBUG)
+				System.err.println("Ecchissei");
 			return tmp;
 		}
 		
 		return u.getPendingInvites();
-		
 	}
 
 	static boolean disconnect (String username) {
@@ -163,7 +160,7 @@ public class Turing {
 			aux = "239." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256);
 			try {
 				addr = InetAddress.getByName(aux);
-				if(multicastAddresses.contains(addr))
+				if(Configurations.DEBUG && multicastAddresses.contains(addr))
 					System.err.println("Questa stampa è solo per vedere se, in sede d'esame, l'aver gestito questa cosa statisticamente impossibile mi farà fare una risata");
 			} catch (UnknownHostException e) { e.printStackTrace(); }
 		} while(!addr.isMulticastAddress() && multicastAddresses.contains(addr));
@@ -186,7 +183,7 @@ public class Turing {
 			} catch (IOException e) { e.printStackTrace(); }
 		}
 		
-		System.out.println("Il documento " + docName + " è stato creato da " + creator);
+		System.out.println(creator + "ha creato il documento " + docName + ".");
 		
 		return 0;
 	}
@@ -279,16 +276,17 @@ public class Turing {
 	}
 	
 	static String getDocs(String username) {
+		
 		User u = database.get(username);
 		Object[] uDocs = u.getDocs().toArray();
 		String res = null;
 		
 		for(int i = 0; i < uDocs.length; i++) {
+			
 			Document d = docs.get(uDocs[i]);
 			String edtr = d.getEditors();
-			if(edtr == null) {
+			if(edtr == null)
 				edtr = "Nessuno.";			//evita di mostrare "null" nel risultato del Pannello del client
-			}
 			
 			if(res == null) 
 				res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
@@ -298,24 +296,19 @@ public class Turing {
 		}
 		
 		res = res + '\n';
-
 		return res;
 	}
 
 	public static void sendSection(SocketChannel sc) {
-		
+		//TODO
 	}
 
 	public static Set<String> getInstaInvites(String nameServed) {
-		User u = database.get(nameServed);
 		Set<String> tmp = null;
+		User u = database.get(nameServed);
 		
-		if(u == null) {
-			System.err.println("Ecchissei");
-			return tmp;
-		}
-		
-		tmp = u.getInstaInvites();
+		if(u != null) 
+			tmp = u.getInstaInvites();
 		
 		return tmp;
 	}

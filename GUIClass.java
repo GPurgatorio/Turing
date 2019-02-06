@@ -25,7 +25,6 @@ import javax.swing.SwingUtilities;
 public class GUIClass extends JFrame {
 
 	private static final long serialVersionUID = 1L;
-	private static int REGISTRATION_PORT = 1099;
 	
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
@@ -55,7 +54,7 @@ public class GUIClass extends JFrame {
 	public static void main(String[] args) throws IOException {
 		
 		GUIClass window = new GUIClass();
-		window.getContentPane().setBackground(new java.awt.Color(0, 172, 230));		
+		window.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);		
 		window.setLocation(400, 100);
 		window.setVisible(true);
 	}
@@ -63,7 +62,7 @@ public class GUIClass extends JFrame {
 	private void init() {
 		offline = false;
 		try {
-			clientSocket = new Socket("localhost", 6789);
+			clientSocket = new Socket("localhost", Configurations.DEFAULT_PORT);
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		}
@@ -86,9 +85,7 @@ public class GUIClass extends JFrame {
 	        logo.setBounds(120, 5, 300, 270);
 	        add(logo);
 		}
-		catch (IOException e) {
-			System.err.println("Logo non trovato.");
-		}
+		catch (IOException e) {	System.err.println("Logo non trovato."); }
 		
 		userField = new JTextField();
 		passField = new JPasswordField();
@@ -144,30 +141,41 @@ public class GUIClass extends JFrame {
 		
         String inpUser;
         inpUser = userField.getText();
-        if(inpUser.length()==0) {
+        if(inpUser.length() == 0) {
         	JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
         	return;
         }
         
         if(!inpUser.matches("[a-zA-Z0-9]+")) { 
-        	JOptionPane.showMessageDialog(null, "Il campo username presenta caratteri non validi.", "Error", JOptionPane.ERROR_MESSAGE);
+        	JOptionPane.showMessageDialog(null, "Il campo Username presenta caratteri non validi.", "Error", JOptionPane.ERROR_MESSAGE);
         	return;
 		}
         
-        if(inpUser.length() > 25) {
-        	JOptionPane.showMessageDialog(null, "Non puoi registrare un nome così lungo. Riprova", "Warning", JOptionPane.WARNING_MESSAGE);
+        if(inpUser.length() > Configurations.MAX_LENGTH) {
+        	JOptionPane.showMessageDialog(null, "Non puoi registrare un Username così lungo. Riprova", "Warning", JOptionPane.WARNING_MESSAGE);
         	return;
         }
 
         char[] inpPas;
         inpPas = passField.getPassword();
         String inpPass = new String(inpPas);
-        if(inpPass.length()==0) {
+        
+        if(inpPass.length() == 0) {
         	JOptionPane.showMessageDialog(null, "Inserisci una Password.", "Error", JOptionPane.ERROR_MESSAGE);
         	return;
         }
         
-        Registry registry = LocateRegistry.getRegistry(REGISTRATION_PORT);
+        if(!inpPass.matches("[a-zA-Z0-9]+")) { 
+        	JOptionPane.showMessageDialog(null, "Il campo Password presenta caratteri non validi.", "Error", JOptionPane.ERROR_MESSAGE);
+        	return;
+		}
+        
+        if(inpPass.length() > Configurations.MAX_LENGTH) {
+        	JOptionPane.showMessageDialog(null, "Non puoi registrare una Password così lunga. Riprova", "Warning", JOptionPane.WARNING_MESSAGE);
+        	return;
+        }
+        
+        Registry registry = LocateRegistry.getRegistry(Configurations.REGISTRATION_PORT);
         RegistrationInterface stub = (RegistrationInterface) registry.lookup(RegistrationInterface.SERVICE_NAME);
         boolean res = stub.registerRequest(inpUser, inpPass);
 		
@@ -180,12 +188,12 @@ public class GUIClass extends JFrame {
 
 	private boolean checkTextFields() {
 		
-		if(userField.getText().length()==0) {
+		if(userField.getText().length() == 0) {
 			JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
         	return false;
 		}
         	
-		if(passField.getPassword().length==0) {
+		if(passField.getPassword().length == 0) {
 			JOptionPane.showMessageDialog(null, "Inserisci una Password.", "Error", JOptionPane.ERROR_MESSAGE);
 			return false;
 		}
@@ -216,23 +224,16 @@ public class GUIClass extends JFrame {
 		if(res.equals("SUCCESS")) {
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, inpUser);
-			w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));	//new java.awt.Color(173, 178, 184));
+			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}
 		
 		else if(res.equals("UNKNWN_USR"))
 			JOptionPane.showMessageDialog(null, "Username o Password errati.", "Error", JOptionPane.ERROR_MESSAGE);
-		
 		else if(res.equals("LOGGED_ALRD"))
 			JOptionPane.showMessageDialog(null, "L'utente risulta essere già connesso.", "Error", JOptionPane.ERROR_MESSAGE);
-		
-		else {
-			System.err.println("Client - loginRequest: " + res);
+		else 
 			JOptionPane.showMessageDialog(null, "Errore generico.", "Error", JOptionPane.ERROR_MESSAGE);
-		}
-		
 	}
-	
-	
 }

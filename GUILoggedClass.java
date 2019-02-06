@@ -38,7 +38,9 @@ public class GUILoggedClass extends JFrame {
 		clientUI();
 		invitesListener();
 		checkPendingInvites();
-		System.out.println("Console di: " + username);
+		
+		if(Configurations.DEBUG)
+			System.out.println("Console di: " + username);
 	}
 
 	private void invitesListener() {
@@ -48,7 +50,7 @@ public class GUILoggedClass extends JFrame {
 		DataOutputStream pendOTS = null;
 		
 		try {
-			pendSocket = new Socket("localhost", 6788);
+			pendSocket = new Socket("localhost", Configurations.INVITE_PORT);
 			pendOTS = new DataOutputStream(pendSocket.getOutputStream());
 			pendIFS = new BufferedReader(new InputStreamReader(pendSocket.getInputStream()));
 		}
@@ -58,7 +60,6 @@ public class GUILoggedClass extends JFrame {
 		
 		l = new NotSoGUIListener(pendSocket, pendOTS, pendIFS, username);
 		l.start();
-		
 	}
 
 	private void checkPendingInvites() throws IOException {
@@ -68,7 +69,7 @@ public class GUILoggedClass extends JFrame {
 			res = inFromServer.readLine();
 			
 			if(res.length() > 0)
-				JOptionPane.showMessageDialog(null, "Sei stato invitato al documento:\n" + res, "Pending Invite", JOptionPane.INFORMATION_MESSAGE);
+				JOptionPane.showMessageDialog(null, "Mentre eri offline, sei stato invitato al documento:\n" + res, "Pending Invite", JOptionPane.INFORMATION_MESSAGE);
 		
 		} while(res.length() != 0);
 	}
@@ -201,14 +202,12 @@ public class GUILoggedClass extends JFrame {
 		
 		do {
 			try {
-				
 				int option = JOptionPane.showConfirmDialog(null, struct, "Creazione Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
 					docName = docLabel.getText();
 					sections = Integer.parseInt(secLabel.getText());
 				}
-				
 				else
 					return;
 			}
@@ -233,14 +232,14 @@ public class GUILoggedClass extends JFrame {
 				JOptionPane.showMessageDialog(null, "Un documento con nome " + docName + " risulta già presente. Cambia nome!");
 				break;
 			case "HACKER":
-				JOptionPane.showMessageDialog(null, "Non risulti registrato.");
+				JOptionPane.showMessageDialog(null, "Non risulti essere registrato.");
 				break;
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico non specificato");
-				System.err.println(res);
+				if(Configurations.DEBUG)
+					System.err.println(res);
 				break;
 		}
-		
 	}
 	
 	public void inviteRequest() throws IOException {
@@ -274,8 +273,9 @@ public class GUILoggedClass extends JFrame {
 		
 		res = inFromServer.readLine();
 		
-		if(res == null) {
-			System.err.println("res è null");
+		if(res == null) {		//to be removed?
+			if(Configurations.DEBUG)
+				System.err.println("res è null");
 			return;
 		}
 		
@@ -327,7 +327,6 @@ public class GUILoggedClass extends JFrame {
 					docName = docLabel.getText();
 					sections = Integer.parseInt(secLabel.getText());
 				}
-				
 				else
 					return;
 			}
@@ -364,7 +363,6 @@ public class GUILoggedClass extends JFrame {
 		
 		String res = null, tmp = null;
 		int check = 0;
-		
 		do {
 			tmp = inFromServer.readLine();
 			
@@ -372,7 +370,6 @@ public class GUILoggedClass extends JFrame {
 				check++;
 				res = res + '\n';
 			}
-
 			else {
 				check = 0;
 				if(res == null)
@@ -381,7 +378,6 @@ public class GUILoggedClass extends JFrame {
 					res = res + tmp + '\n';
 			}
 		} while(check < 2);
-
 
 		if(res != null) 
 			tmp = "SUCCESS";
@@ -393,10 +389,10 @@ public class GUILoggedClass extends JFrame {
 				//TODO
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
-				System.err.println(res);
+				if(Configurations.DEBUG)
+					System.err.println(res);
 				break;
 		}
-		
 	}
 
 	public void editRequest() throws IOException {
@@ -411,17 +407,14 @@ public class GUILoggedClass extends JFrame {
 		
 		String res, docName = null;
 		int section; 
-		
 		do {
 			try {
-				
 				int option = JOptionPane.showConfirmDialog(null, struct, "Modifica Sezione di Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
 					docName = docLabel.getText();
 					section = Integer.parseInt(secLabel.getText());
 				}
-				
 				else
 					return;
 			}
@@ -452,14 +445,15 @@ public class GUILoggedClass extends JFrame {
 				this.dispose();
 				GUIEditClass w = new GUIEditClass(outToServer, inFromServer, clientSocket, username, tmp, docName, section);
 				username = "";
-				w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));
+				w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);
 				w.setLocation(400, 100);
 				w.setVisible(true);
 				break;
 			//TODO
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
-				System.err.println(tmp);
+				if(Configurations.DEBUG)
+					System.err.println(tmp);
 				break;
 		}
 		
@@ -478,7 +472,7 @@ public class GUILoggedClass extends JFrame {
 			l.disable();
 			this.dispose();
 			GUIClass w = new GUIClass(outToServer, inFromServer, clientSocket);
-			w.getContentPane().setBackground(new java.awt.Color(0, 172, 230));	
+			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}

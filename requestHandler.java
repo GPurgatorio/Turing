@@ -14,8 +14,6 @@ public class requestHandler implements Runnable {
 	private Socket clientSocket;
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
-
-	
 	
 	public requestHandler(Socket s) throws IOException {
 		clientSocket = s;
@@ -27,13 +25,11 @@ public class requestHandler implements Runnable {
 	@Override
 	public void run() {
 		boolean flag = true;
-		
 		do {
 			try {
 				
 				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();
-				//System.out.println("Thread - Serving a " + command + " request.");
 				
 				if(command.equals("login")) {
 					
@@ -41,8 +37,6 @@ public class requestHandler implements Runnable {
 					nameServed = username;
 					password = inFromClient.readLine();
 					answer = "ERROR" + '\n';
-					
-					System.out.printf("Received: %s %s\n", username, password);
 		
 					int res = Turing.login(username, password);
 					
@@ -55,10 +49,9 @@ public class requestHandler implements Runnable {
 					
 					outToClient.writeBytes(answer);
 					
-					sendPendingInvites();
-					
+					if(answer.equals("SUCCESS\n"))
+						sendPendingInvites();
 				}
-			
 			
 				else if(command.equals("logout")) {
 					
@@ -132,7 +125,6 @@ public class requestHandler implements Runnable {
 						outToClient.writeBytes("ERROR" + '\n');
 					else 
 						outToClient.writeBytes(res + '\n');		//success
-					
 				}
 				
 				else if (command.equals("endEdit")) {
@@ -151,7 +143,6 @@ public class requestHandler implements Runnable {
 				else if (command.equals("list")) {
 					
 					username = inFromClient.readLine();
-					
 					String res = Turing.getDocs(username);
 					
 					outToClient.writeBytes(res + '\n');
@@ -161,32 +152,28 @@ public class requestHandler implements Runnable {
 				try {
 					clientSocket.close();
 					Turing.disconnect(nameServed);
-					if(sectionDoc != -1) 			//unlock
+					if(sectionDoc != -1) 			//unlock in caso di crash
 						Turing.endEdit(nameServed, docServed, sectionDoc);
 					flag = false;
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 			}
-			
 		} while(flag);
 	}
 
 	private void sendPendingInvites() {
-		try {
-			
+		
+		try {	
 			Set<String> tmp = Turing.getPendingInvites(nameServed);
 			
 			if(tmp != null) {
 				Iterator<String> it = tmp.iterator();
-				while(it.hasNext()) {
-					String x = it.next();
-					outToClient.writeBytes(x + '\n');
-				}
+				while(it.hasNext())
+					outToClient.writeBytes(it.next() + '\n');
 			}
 
 			outToClient.writeByte('\n');		//notifica la fine dei documenti (N.B. non possono esistere documenti con questo nome!)
-			
 			Turing.resetInvites(nameServed);
 		
 		} catch (IOException e) { e.printStackTrace(); }

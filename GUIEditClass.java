@@ -40,7 +40,6 @@ public class GUIEditClass extends JFrame {
 	private Socket clientSocket;
 	private MulticastSocket chatSocket;
 	private InetAddress group;
-	private int port;
 	private Chat c;
 	
 	public GUIEditClass(DataOutputStream ots, BufferedReader ifs, Socket s, String usr, String addr, String doc, int sec) throws IOException {
@@ -53,8 +52,7 @@ public class GUIEditClass extends JFrame {
 		
 		downloadFile();
 		
-		port = 4321;			//(int) (Math.random() * 16383) + 49152;
-		chatSocket = new MulticastSocket(port);
+		chatSocket = new MulticastSocket(Configurations.MULTICAST_PORT);
 		group = InetAddress.getByName(addr);
 		
 		chatArea = new JTextArea();
@@ -68,7 +66,7 @@ public class GUIEditClass extends JFrame {
 		scrollPane = new JScrollPane(chatArea);
 		scrollPane.setVisible(true);
 		
-		ExecutorService e = Executors.newFixedThreadPool(1);
+		ExecutorService e = Executors.newFixedThreadPool(1);		//cambia con un thread lel
 		c = new Chat(chatArea, chatSocket, group);
 		e.execute(c);
 		
@@ -160,7 +158,7 @@ public class GUIEditClass extends JFrame {
 		String msg = "[ " + username + " ]: " + msgArea.getText();
 		if(msg.length() > 0) {
 			byte[] m = msg.getBytes();
-			DatagramPacket packet = new DatagramPacket(m, m.length, group, port);
+			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
 			chatSocket.send(packet);
 		}
 		
@@ -171,7 +169,7 @@ public class GUIEditClass extends JFrame {
 		if(msg.length() > 0) {
 			//crypt(msg)			se avanza tempo
 			byte[] m = msg.getBytes();
-			DatagramPacket packet = new DatagramPacket(m, m.length, group, port);
+			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
 			chatSocket.send(packet);
 		}
 	}
@@ -188,7 +186,7 @@ public class GUIEditClass extends JFrame {
 		if(res == "SUCCESS") {
 			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, username);
-			w.getContentPane().setBackground(new java.awt.Color(194, 194, 163));	//new java.awt.Color(173, 178, 184));
+			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(400, 100);
 			w.setVisible(true);
 		}
