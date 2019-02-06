@@ -44,10 +44,14 @@ public class GUIClass extends JFrame {
 		loginUI();
 	}
 	
-	public GUIClass(DataOutputStream dos, BufferedReader br, Socket s) {
-		outToServer = dos;
-		inFromServer = br;
+	public GUIClass(Socket s) {
 		clientSocket = s;
+		
+		try {
+			outToServer = new DataOutputStream(clientSocket.getOutputStream());
+			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		} catch (IOException e) { e.printStackTrace(); }
+		
 		loginUI();
 	}
 	
@@ -55,7 +59,7 @@ public class GUIClass extends JFrame {
 		
 		GUIClass window = new GUIClass();
 		window.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);		
-		window.setLocation(400, 100);
+		window.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 		window.setVisible(true);
 	}
 
@@ -223,9 +227,9 @@ public class GUIClass extends JFrame {
 		
 		if(res.equals("SUCCESS")) {
 			this.dispose();
-			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, inpUser);
+			GUILoggedClass w = new GUILoggedClass(clientSocket, inpUser);
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
-			w.setLocation(400, 100);
+			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
 		}
 		

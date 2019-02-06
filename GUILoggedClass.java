@@ -30,40 +30,40 @@ public class GUILoggedClass extends JFrame {
 	private JButton createDocButton, inviteButton, editButton, listButton, showButton, logoutButton;
 	private JLabel userLabel;
 	
-	public GUILoggedClass(DataOutputStream dos, BufferedReader ifs, Socket s, String usr) throws IOException {
-		outToServer = dos;
-		inFromServer = ifs;
+	public GUILoggedClass(Socket s, String usr) throws IOException {
 		clientSocket = s;
+		outToServer = new DataOutputStream(clientSocket.getOutputStream());
+		inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		
 		username = usr;
 		clientUI();
 		invitesListener();
 		checkPendingInvites();
 		
-		if(Configurations.DEBUG)
+		if(Configurations.DEBUG)			//Per evitare confusione tra le varie consoles, un punto di riferimento
 			System.out.println("Console di: " + username);
 	}
 
+	//Listener per gli inviti live (durante il periodo in cui l'utente è online)
 	private void invitesListener() {
 		
 		Socket pendSocket = null;
-		BufferedReader pendIFS = null;
-		DataOutputStream pendOTS = null;
 		
 		try {
 			pendSocket = new Socket("localhost", Configurations.INVITE_PORT);
-			pendOTS = new DataOutputStream(pendSocket.getOutputStream());
-			pendIFS = new BufferedReader(new InputStreamReader(pendSocket.getInputStream()));
 		}
 		catch (Exception e) {
 			JOptionPane.showMessageDialog(null, "Il server di supporto è offline!", "Error", JOptionPane.ERROR_MESSAGE);
+			return;
 		}
 		
-		l = new NotSoGUIListener(pendSocket, pendOTS, pendIFS, username);
+		l = new NotSoGUIListener(pendSocket, username);
 		l.start();
 	}
 
+	//Funzione che controlla se l'utente è stato invitato a qualche documento mentre era offline
 	private void checkPendingInvites() throws IOException {
-	
+		
 		String res = null;
 		do {
 			res = inFromServer.readLine();
@@ -71,9 +71,10 @@ public class GUILoggedClass extends JFrame {
 			if(res.length() > 0)
 				JOptionPane.showMessageDialog(null, "Mentre eri offline, sei stato invitato al documento:\n" + res, "Pending Invite", JOptionPane.INFORMATION_MESSAGE);
 		
-		} while(res.length() != 0);
+		} while(res.length() != 0);		//crea un MessageDialog per ogni documento
 	}
 
+	//User Interface
 	public void clientUI() throws IOException {
 
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
@@ -118,9 +119,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					createDocRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -128,9 +127,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					inviteRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -138,9 +135,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					showRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -148,9 +143,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					listRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -158,9 +151,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					editRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -168,9 +159,7 @@ public class GUILoggedClass extends JFrame {
 			public void actionPerformed(ActionEvent ae){
 				try {
 					logoutRequest();
-				} catch (IOException e) {
-					e.printStackTrace();	//outToServer.writeBytes
-				}
+				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
@@ -194,7 +183,7 @@ public class GUILoggedClass extends JFrame {
 		
 		Object[] struct = {
 				"Nome Documento:", docLabel,
-				"Numero Sezioni [1-9]:", secLabel
+				"Numero Sezioni [1-" + Configurations.MAX_SECTIONS + "]:", secLabel
 		};
 		
 		String res, docName = null;
@@ -205,8 +194,8 @@ public class GUILoggedClass extends JFrame {
 				int option = JOptionPane.showConfirmDialog(null, struct, "Creazione Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
-					docName = docLabel.getText();
-					sections = Integer.parseInt(secLabel.getText());
+					docName = docLabel.getText();						//nome documento da creare
+					sections = Integer.parseInt(secLabel.getText());	//numero sezioni del documento da creare
 				}
 				else
 					return;
@@ -214,15 +203,15 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (sections < 1 || sections > 9 || docName == null);
+		} while (sections < 1 || sections > Configurations.MAX_SECTIONS || docName == null || !docName.matches("[a-zA-Z0-9]+"));	//prendi inputs corretti || stop
 		
-		outToServer.writeBytes("createDoc" + '\n');
+		outToServer.writeBytes("createDoc" + '\n');			//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');			//inputs per la richiesta
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(sections);
 		
-		res = inFromServer.readLine();
+		res = inFromServer.readLine();						//risultato richiesta
 		
 		switch(res) {
 			case "SUCCESS":
@@ -235,7 +224,7 @@ public class GUILoggedClass extends JFrame {
 				JOptionPane.showMessageDialog(null, "Non risulti essere registrato.");
 				break;
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico non specificato");
+				JOptionPane.showMessageDialog(null, "Errore generico.");
 				if(Configurations.DEBUG)
 					System.err.println(res);
 				break;
@@ -258,26 +247,27 @@ public class GUILoggedClass extends JFrame {
 			int option = JOptionPane.showConfirmDialog(null, struct, "Invito a Documento", JOptionPane.OK_CANCEL_OPTION);
 			
 			if (option == JOptionPane.OK_OPTION) {
-				docName = docLabel.getText();
-				user = usLabel.getText();
+				docName = docLabel.getText();					//nome del documento a cui invitare
+				user = usLabel.getText();						//utente da invitare al documento
 			}
 			else
 				return;
-		} while (docName == null || user == null);
+		} while (docName == null || user == null || !docName.matches("[a-zA-Z0-9]+") || !user.matches("[a-zA-Z0-9]+"));				//prendi inputs corretti || stop
 		
-		outToServer.writeBytes("invite" + '\n');
+		outToServer.writeBytes("invite" + '\n');				//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');				//inputs per la richiesta
 		outToServer.writeBytes(user + '\n');
 		outToServer.writeBytes(docName + '\n');
 		
-		res = inFromServer.readLine();
+		res = inFromServer.readLine();							//risultato richiesta
 		
-		if(res == null) {		//to be removed?
+		/*
+		if(res == null) {
 			if(Configurations.DEBUG)
 				System.err.println("res è null");
 			return;
-		}
+		}*/
 		
 		switch(res) {
 			case "SUCCESS":
@@ -299,10 +289,9 @@ public class GUILoggedClass extends JFrame {
 				JOptionPane.showMessageDialog(null, "L'utente " + user + " è già Editor del documento " + docName + "!");
 				break;
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
+				JOptionPane.showMessageDialog(null, "Errore generico.");
 				break;
 		}
-		
 	}
 
 	public void showRequest() throws IOException {
@@ -312,20 +301,21 @@ public class GUILoggedClass extends JFrame {
 		
 		Object[] struct = {
 				"Nome Documento:", docLabel,
-				"Sezione [opt]:", secLabel
+				"Sezione: (se > " + Configurations.MAX_SECTIONS + " -> doc completo):", secLabel
 		};
 		
 		String res, docName = null;
-		int sections; 
+		int sections;
 		
 		do {
 			try {
-				
+				sections = 255;
 				int option = JOptionPane.showConfirmDialog(null, struct, "Mostra [Sezione di] Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
-					docName = docLabel.getText();
-					sections = Integer.parseInt(secLabel.getText());
+					docName = docLabel.getText();							//nome del documento che si desidera visualizzare
+					if(secLabel.getText().length() > 0) 
+						sections = Integer.parseInt(secLabel.getText());	//sezione del documento che si desidera visualizzare [opt]
 				}
 				else
 					return;
@@ -333,45 +323,54 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (docName == null || sections < 0);
+		} while (docName == null || sections < 0 || sections > 255 || !docName.matches("[a-zA-Z0-9]+"));	//prendi inputs corretti || stop
 		
-		outToServer.writeBytes("show" + '\n');
+		outToServer.writeBytes("show" + '\n');				//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');			//inputs per la richiesta
 		outToServer.writeBytes(docName + '\n');
-		outToServer.writeByte(sections);
+		outToServer.writeByte(sections);		
 		
-		res = inFromServer.readLine();		
+		res = inFromServer.readLine();						//risultato richiesta
 		
 		switch(res) {
 			case "SUCCESS":
-				JOptionPane.showMessageDialog(null, "Download del documento " + docName + " iniziato!" );
+				if(sections <= Configurations.MAX_SECTIONS)
+					JOptionPane.showMessageDialog(null, "Sezione " + sections + " del documento " + docName + " scaricato nella tua cartella personale!", "Success", JOptionPane.OK_OPTION );
+				else	
+					JOptionPane.showMessageDialog(null, "Documento " + docName + " scaricato nella tua cartella personale!", "Success", JOptionPane.OK_OPTION );
 				break;
-			//TODO
+			case "EDITING":
+				JOptionPane.showMessageDialog(null, "Documento " + docName + " scaricato. Qualcuno ci sta lavorando sopra!", "Section Not Up To Date", JOptionPane.INFORMATION_MESSAGE);
+				break;
+			case "NOT_EXIST":
+				JOptionPane.showMessageDialog(null, "Il documento " + docName + " non esiste", "Error", JOptionPane.ERROR_MESSAGE);
+				break;
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
-				System.err.println(res);
+				JOptionPane.showMessageDialog(null, "Errore generico.");
+				if(Configurations.DEBUG)
+					System.err.println(res);
 				break;
 		}
 	}
 	
 	public void listRequest() throws IOException {
 	
-		outToServer.writeBytes("list" + '\n');
+		outToServer.writeBytes("list" + '\n');		//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');	//input per richiesta
 		
 		String res = null, tmp = null;
 		int check = 0;
 		do {
-			tmp = inFromServer.readLine();
+			tmp = inFromServer.readLine();		//costruisco la stringa finale
 			
-			if(tmp.length() < 1) {	//il server manda uno \n per ogni riga ed alla fine un ulteriore \n, contandoli so quando ho finito
-				check++;
+				if(tmp.length() < 1) {			//Il server manda uno \n per ogni riga (classico writeBytes) ed alla fine 
+					check++;					//un ulteriore \n, contandoli so quando ho finito i documenti
 				res = res + '\n';
 			}
 			else {
-				check = 0;
+				check = 0;						//C'è un ulteriore documento, reset
 				if(res == null)
 					res = tmp + '\n';
 				else
@@ -388,7 +387,7 @@ public class GUILoggedClass extends JFrame {
 				break;
 				//TODO
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
+				JOptionPane.showMessageDialog(null, "Errore generico.");
 				if(Configurations.DEBUG)
 					System.err.println(res);
 				break;
@@ -412,8 +411,8 @@ public class GUILoggedClass extends JFrame {
 				int option = JOptionPane.showConfirmDialog(null, struct, "Modifica Sezione di Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
-					docName = docLabel.getText();
-					section = Integer.parseInt(secLabel.getText());
+					docName = docLabel.getText();						//nome del documento che si desidera modificare
+					section = Integer.parseInt(secLabel.getText());		//sezione del documento che si desidera modificare
 				}
 				else
 					return;
@@ -421,64 +420,59 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				section = -1;
 			}
-		} while (docName == null || section < 0);
+		} while (docName == null || section < 0 || section > Configurations.MAX_LENGTH || !docName.matches("[a-zA-Z0-9]+"));		//prendi inputs corretti || stop
 
-		outToServer.writeBytes("editDoc" + '\n');
+		outToServer.writeBytes("editDoc" + '\n');				//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');				//inputs per la richiesta
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(section);
 		
-		String tmp = inFromServer.readLine();	
+		String tmp = inFromServer.readLine();					//risultato richiesta
 		
-		if(tmp == null)
-			res = "ERROR";
-		
-		else if(tmp.startsWith("2"))
-			res = "SUCCESS";
+		if(tmp.startsWith("2"))									//è un indirizzo
+			res = "SUCCESS";									//TODO: change con regex dell'es di laboratorio Weblog se hai tempo
 		
 		else
 			res = "ERROR";
 		
 		switch(res) {
 			case "SUCCESS":
-				this.dispose();
-				GUIEditClass w = new GUIEditClass(outToServer, inFromServer, clientSocket, username, tmp, docName, section);
+				this.dispose();		//passo alla modalità Editing
+				GUIEditClass w = new GUIEditClass(clientSocket, username, tmp, docName, section);
 				username = "";
 				w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);
-				w.setLocation(400, 100);
+				w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 				w.setVisible(true);
 				break;
 			//TODO
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico non specificato.");
+				JOptionPane.showMessageDialog(null, "Errore generico.");
 				if(Configurations.DEBUG)
 					System.err.println(tmp);
 				break;
 		}
-		
 	}
 
 	public void logoutRequest() throws IOException {
 		
-		outToServer.writeBytes("logout" + '\n');
+		outToServer.writeBytes("logout" + '\n');				//richiesta
 		
-		outToServer.writeBytes(username + '\n');
+		outToServer.writeBytes(username + '\n');				//input per la richiesta
 
-		String res = inFromServer.readLine();
+		String res = inFromServer.readLine();					//risultato richiesta
 		
 		if(!res.equals("ERROR")) {
 			username = "";
 			l.disable();
 			this.dispose();
-			GUIClass w = new GUIClass(outToServer, inFromServer, clientSocket);
+			GUIClass w = new GUIClass(clientSocket);			//torno alla schermata di login/register (connessione persistente)
 			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
-			w.setLocation(400, 100);
+			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
 		}
-		else {
-			JOptionPane.showMessageDialog(null, "Problema durante la disconnessione.");
-		}
+		else if(Configurations.DEBUG)
+			JOptionPane.showMessageDialog(null, "Non risulti offline (?).");
 	}
 
 }

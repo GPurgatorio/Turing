@@ -7,12 +7,13 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -41,14 +42,18 @@ public class GUIEditClass extends JFrame {
 	private MulticastSocket chatSocket;
 	private InetAddress group;
 	private Chat c;
+	private Calendar calendar;
 	
-	public GUIEditClass(DataOutputStream ots, BufferedReader ifs, Socket s, String usr, String addr, String doc, int sec) throws IOException {
-		outToServer = ots;
-		inFromServer = ifs;
+	public GUIEditClass(Socket s, String usr, String addr, String doc, int sec) throws IOException {
 		clientSocket = s;
 		username = usr;
 		docName = doc;
 		section = sec;
+		
+		try {
+			outToServer = new DataOutputStream(clientSocket.getOutputStream());
+			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+		} catch (IOException e) { e.printStackTrace(); }
 		
 		downloadFile();
 		
@@ -66,11 +71,8 @@ public class GUIEditClass extends JFrame {
 		scrollPane = new JScrollPane(chatArea);
 		scrollPane.setVisible(true);
 		
-		ExecutorService e = Executors.newFixedThreadPool(1);		//cambia con un thread lel
-		c = new Chat(chatArea, chatSocket, group);
-		e.execute(c);
-		
-		connectAlert(username + " si è connesso.");
+		c = new Chat(username, chatArea, chatSocket, group);
+		c.start();
 		
 		editUI();
 	}
@@ -122,6 +124,15 @@ public class GUIEditClass extends JFrame {
 			}
 		});
 		
+		addWindowListener(new java.awt.event.WindowAdapter() {
+		    @Override
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		    	try {
+					disconnect();
+				} catch (IOException e) { e.printStackTrace(); }
+		    }
+		});
+		
 		msgArea.addKeyListener(new KeyListener(){
 
             public void keyPressed(KeyEvent e) {
@@ -153,25 +164,30 @@ public class GUIEditClass extends JFrame {
 		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);
 	}
 
+	protected void disconnect() throws IOException {
+		System.err.println("Disconnect");
+		String finalMsg = username + " si è disconnesso.\n";
+		byte[] m = finalMsg.getBytes();
+		DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
+		chatSocket.send(packet);
+		chatSocket.leaveGroup(group);
+	}
+
 	private void sendMsg() throws IOException {
+		calendar = Calendar.getInstance(TimeZone.getDefault());
+		int hour = calendar.get(Calendar.HOUR);
+		int minute = calendar.get(Calendar.MINUTE);
 		
-		String msg = "[ " + username + " ]: " + msgArea.getText();
-		if(msg.length() > 0) {
+		String input = msgArea.getText();
+		String msg = "[" + username + " " + hour + ":" + minute + "]: " + input;
+		
+		if(input.length() > 0) {
 			byte[] m = msg.getBytes();
 			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
 			chatSocket.send(packet);
 		}
 		
 		msgArea.setText("");
-	}
-	
-	private void connectAlert(String msg) throws IOException {
-		if(msg.length() > 0) {
-			//crypt(msg)			se avanza tempo
-			byte[] m = msg.getBytes();
-			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
-			chatSocket.send(packet);
-		}
 	}
 
 	private void loggedUI() throws IOException {
@@ -184,10 +200,11 @@ public class GUIEditClass extends JFrame {
 		String res = inFromServer.readLine();
 		
 		if(res == "SUCCESS") {
+			c.disable();
 			this.dispose();
-			GUILoggedClass w = new GUILoggedClass(outToServer, inFromServer, clientSocket, username);
+			GUILoggedClass w = new GUILoggedClass(clientSocket, username);
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
-			w.setLocation(400, 100);
+			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
 		}
 	}

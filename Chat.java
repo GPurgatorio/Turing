@@ -2,54 +2,62 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.net.SocketTimeoutException;
 
 import javax.swing.JTextArea;
 
-public class Chat implements Runnable {
+public class Chat extends Thread {
 	
 	private JTextArea chat;
 	private MulticastSocket socket;
 	private InetAddress group;
 	private boolean running;
+	private String username;
 	
-	public Chat(JTextArea c, MulticastSocket s, InetAddress g) {
+	public Chat(String u, JTextArea c, MulticastSocket s, InetAddress g) {
 		chat = c;
 		socket = s;
 		group = g;
+		username = u;
 		running = true;
 	}
-
-	public void listen() throws IOException {
-		byte[] buffer = new byte[1024];
-		//socket.setSoTimeout(100);
-		socket.joinGroup(group);
-		
-		while(running) {
-			
-			DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-			socket.receive(packet);
-		
-			String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
-			//msg = decrypt(msg);			se avanza tempo
-			chat.append(msg + '\n');
-			/*
-			catch (SocketTimeoutException e) {
-				;
-			} */
-
+	
+	private void connectAlert(String msg) throws IOException {
+		if(msg.length() > 0) {
+			//crypt(msg)			se avanza tempo
+			byte[] m = msg.getBytes();
+			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
+			socket.send(packet);
 		}
-		socket.leaveGroup(group);
+	}
+
+	public void run() {
+		byte[] buffer = new byte[1024];
+		DatagramPacket packet;
+		
+		try {
+			connectAlert(username + " si è connesso.");
+		
+			socket.setSoTimeout(Configurations.TIMEOUT);
+			socket.joinGroup(group);
+			
+			while(running) {
+				packet = null;
+				try {
+					packet = new DatagramPacket(buffer, buffer.length);
+					socket.receive(packet);
+				
+					String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
+					//msg = decrypt(msg);						se avanza tempo
+					chat.append(msg + '\n');
+				} catch(SocketTimeoutException e) { ; }			//ignoro timeout
+			}
+		
+		} catch (IOException e1) { e1.printStackTrace(); }
 	}
 
 	public void disable() {
 		running = false;
 	}
 
-	@Override
-	public void run() {
-		try {
-			listen();
-		} catch (IOException e) { e.printStackTrace(); }
-		
-	}
 }

@@ -38,10 +38,7 @@ public class pendingInviteHandler implements Runnable {
 						pendOTC.writeBytes(it.next() + '\n');
 				}
 				Turing.resetInstaInvites(nameServed);
-				pendOTC.writeByte('\n');		//quando il client si sconnetterà, 
-				//questa writeByte fallirà lanciando una SocketException che setterà running a false per far terminare questo runnable
-				//la write non è problematica per gli inviti in quanto controllo che non siano null per stamparli!
-			} catch(SocketException e) { running = false;  }
+			} catch(SocketException e) { running = false; }
 			catch (IOException e1) { e1.printStackTrace(); }
 		}
 	}

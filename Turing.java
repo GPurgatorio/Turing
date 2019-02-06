@@ -4,7 +4,11 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.rmi.AlreadyBoundException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -41,7 +45,6 @@ public class Turing {
 		RegistrationRMI obj = new RegistrationRMI(database, usersOffline, usersOnline);
         RegistrationInterface stub = (RegistrationInterface) UnicastRemoteObject.exportObject(obj, 0);
 
-        // Bind the remote object's stub in the registry
         Registry registry = LocateRegistry.createRegistry(Configurations.REGISTRATION_PORT);
         registry.bind(RegistrationInterface.SERVICE_NAME, stub);
 	}
@@ -183,7 +186,7 @@ public class Turing {
 			} catch (IOException e) { e.printStackTrace(); }
 		}
 		
-		System.out.println(creator + "ha creato il documento " + docName + ".");
+		System.out.println(creator + " ha creato il documento " + docName + " con " + sections + " sezioni.");
 		
 		return 0;
 	}
@@ -319,5 +322,92 @@ public class Turing {
 
 	public static void resetInstaInvites(String username) {
 		database.get(username).resetInstaInvites();
+	}
+
+	static int getFile(String username, String docName, int section) throws IOException {
+		int res = 0;
+		
+		if(!docs.containsKey(docName))
+			return -1;
+		else if(docs.get(docName).isLocked(section))
+			res = 1;
+		
+		FileChannel inChannel = FileChannel.open(Paths.get(docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
+		File dir = new File("Downloads_" + username);
+		if(!dir.exists())
+			dir.mkdir();
+		File x = new File("Downloads_" + username, docName + section + ".txt");
+		if(x.exists())
+			x.delete();
+		x.createNewFile();
+		FileChannel outChannel = FileChannel.open(Paths.get("Downloads_" + username + "/" + docName + section + ".txt"),	StandardOpenOption.WRITE);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+		
+		boolean stop=false;
+		
+		while (!stop) { 
+			int bytesRead=inChannel.read(buffer);
+			if (bytesRead==-1) {
+				stop=true;
+			}
+			buffer.flip();
+			while (buffer.hasRemaining())
+				outChannel.write(buffer);
+			buffer.clear();
+		}
+		inChannel.close(); 
+		outChannel.close();
+		
+		return res;
+	}
+
+	static int getDocument(String username, String docName) throws IOException {
+		int res = 0;
+		
+		if(!docs.containsKey(docName))
+			return -1;
+		
+		Document d = docs.get(docName);
+		for(int i = 0; i < d.locks.size(); i++) {
+			if(d.isLocked(i)) {
+				res = 1;
+				break;
+			}
+		}
+		
+		File dir = new File("Downloads_" + username);
+		if(!dir.exists())
+			dir.mkdir();
+		
+		File x = new File("Downloads_" + username, docName + "_COMPLETE.txt");
+		x.createNewFile();
+		FileChannel outChannel = FileChannel.open(Paths.get("Downloads_" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+		
+		for(int i = 0; i < d.locks.size(); i++) {
+			FileChannel inChannel = FileChannel.open(Paths.get(docName + "/" + docName + i + ".txt"), StandardOpenOption.READ);
+			boolean stop=false;
+			
+			while (!stop) { 
+				int bytesRead=inChannel.read(buffer);
+				if (bytesRead==-1)
+					stop=true;
+				
+				buffer.flip();
+				while (buffer.hasRemaining())
+					outChannel.write(buffer);
+				buffer.clear();
+			}
+			inChannel.close(); 
+			//mando a capo per il cambio di file
+			buffer.put((byte) '\n');
+			buffer.flip();
+			while(buffer.hasRemaining())
+				outChannel.write(buffer);
+			buffer.clear();
+		}
+		outChannel.close();
+		
+		return res;
 	}
 }

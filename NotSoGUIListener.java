@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -15,12 +16,15 @@ public class NotSoGUIListener extends Thread {
 	private DataOutputStream pendOTS;
 	private boolean running;
 	
-	public NotSoGUIListener(Socket pendSocket, DataOutputStream pendOTS, BufferedReader pendIFS, String username) {
+	public NotSoGUIListener(Socket pendSocket, String username) {
 		this.username = username;
 		this.pendSocket = pendSocket;
-		this.pendIFS = pendIFS;
-		this.pendOTS = pendOTS;
 		running = true;
+		
+		try {
+			pendOTS = new DataOutputStream(pendSocket.getOutputStream());
+			pendIFS = new BufferedReader(new InputStreamReader(pendSocket.getInputStream()));
+		} catch (IOException e) { e.printStackTrace(); }
 	}
 	
 	public void run() {

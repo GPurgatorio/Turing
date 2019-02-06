@@ -1,8 +1,13 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -146,6 +151,28 @@ public class requestHandler implements Runnable {
 					String res = Turing.getDocs(username);
 					
 					outToClient.writeBytes(res + '\n');
+				}
+				
+				else if (command.equals("show")) {
+					
+					username = inFromClient.readLine();
+					docName = inFromClient.readLine();
+					int section = inFromClient.read();
+					int res = 2;
+
+					if(section <= Configurations.MAX_SECTIONS) 
+						res = Turing.getFile(username, docName, section);
+					else
+						res = Turing.getDocument(username, docName);
+					
+					if(res == 0)
+						outToClient.writeBytes("SUCCESS" + '\n');
+					else if(res == 1)
+						outToClient.writeBytes("EDITING" + '\n');
+					else if(res == -1)
+						outToClient.writeBytes("NOT_EXIST" + '\n');
+					else
+						outToClient.writeBytes("ERROR" + '\n');
 				}
 			}
 			catch (Exception e) {
