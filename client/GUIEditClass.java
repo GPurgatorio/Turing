@@ -14,6 +14,12 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Calendar;
 import java.util.TimeZone;
 
@@ -43,13 +49,17 @@ public class GUIEditClass extends JFrame {
 	private DataOutputStream outToServer; 
 	private BufferedReader inFromServer;
 	private Socket clientSocket;
+	private SocketChannel clientChannel;
+	private ServerSocketChannel serverSocket;
 	private MulticastSocket chatSocket;
 	private InetAddress group;
 	private Chat c;
 	private Calendar calendar;
 	
-	public GUIEditClass(Socket s, String usr, String addr, String doc, int sec) throws IOException {
+	public GUIEditClass(Socket s, SocketChannel sc, ServerSocketChannel ssc, String usr, String addr, String doc, int sec) throws IOException {
 		clientSocket = s;
+		clientChannel = sc;
+		serverSocket = ssc;
 		username = usr;
 		docName = doc;
 		section = sec;
@@ -58,8 +68,6 @@ public class GUIEditClass extends JFrame {
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		} catch (IOException e) { e.printStackTrace(); }
-		
-		downloadFile();
 		
 		chatSocket = new MulticastSocket(Configurations.MULTICAST_PORT);
 		group = InetAddress.getByName(addr);
@@ -79,11 +87,6 @@ public class GUIEditClass extends JFrame {
 		c.start();
 		
 		editUI();
-	}
-
-	private void downloadFile() {
-		// TODO Auto-generated method stub
-		
 	}
 
 	private void editUI() throws IOException {
@@ -119,7 +122,6 @@ public class GUIEditClass extends JFrame {
 		
 		endEditButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae) {
-				//uploadFile
 				c.disable();
 				try {
 					chatSocket.leaveGroup(group);
@@ -168,6 +170,26 @@ public class GUIEditClass extends JFrame {
 		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);
 	}
 
+	protected void uploadFile() throws IOException {
+		FileChannel inChannel = FileChannel.open(Paths.get("Editing/" + username + "/" + docName + section + ".txt"), StandardOpenOption.READ);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+		
+		boolean stop = false;
+		
+		while (!stop) { 
+			int bytesRead=inChannel.read(buffer);
+			if (bytesRead==-1) {
+				stop=true;
+			}
+			buffer.flip();
+			while (buffer.hasRemaining())
+				clientChannel.write(buffer);
+			buffer.clear();
+		}
+		clientChannel.close();
+		inChannel.close(); 
+	}
+
 	protected void disconnect() throws IOException {
 		System.err.println("Disconnect");
 		String finalMsg = username + " si è disconnesso.\n";
@@ -201,12 +223,17 @@ public class GUIEditClass extends JFrame {
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(section);
 		
+		uploadFile();
+		
 		String res = inFromServer.readLine();
 		
-		if(res == "SUCCESS") {
+		clientChannel = null;
+		
+		if(res.equals("SUCCESS")) {
+			System.err.println("Fine Edit, torno in Logged");
 			c.disable();
 			this.dispose();
-			GUILoggedClass w = new GUILoggedClass(clientSocket, username);
+			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, username, "edit");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);

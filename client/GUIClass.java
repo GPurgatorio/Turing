@@ -8,7 +8,10 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -34,6 +37,8 @@ public class GUIClass extends JFrame {
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
+	private static SocketChannel clientChannel;
+	private static ServerSocketChannel serverSocket;
 	
 	private JPasswordField passField;
 	private JTextField userField;
@@ -49,14 +54,16 @@ public class GUIClass extends JFrame {
 		loginUI();
 	}
 	
-	public GUIClass(Socket s) {
+	public GUIClass(Socket s, SocketChannel c, ServerSocketChannel ssc) {
 		clientSocket = s;
+		clientChannel = c;
+		serverSocket = ssc;
 		
 		try {
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		} catch (IOException e) { e.printStackTrace(); }
-		
+		System.err.println("GUIClass da LoggedClass");
 		loginUI();
 	}
 	
@@ -70,6 +77,9 @@ public class GUIClass extends JFrame {
 
 	private void init() {
 		offline = false;
+		clientChannel = null;
+		//serverSocket = null;
+		
 		try {
 			clientSocket = new Socket("localhost", Configurations.DEFAULT_PORT);
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
@@ -210,7 +220,7 @@ public class GUIClass extends JFrame {
 		return true;
 	}
 	
-	public void loginRequest() throws IOException{
+	public void loginRequest() throws IOException {
 		
 		if(offline) {
 			JOptionPane.showMessageDialog(null, "Il server è offline. Chiudi il client e riprova.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -232,7 +242,7 @@ public class GUIClass extends JFrame {
 		
 		if(res.equals("SUCCESS")) {
 			this.dispose();
-			GUILoggedClass w = new GUILoggedClass(clientSocket, inpUser);
+			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, inpUser, "login");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);

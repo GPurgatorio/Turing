@@ -7,6 +7,7 @@ public class Configurations {
 	public static final int INVITE_PORT = 6788;
 	public static final int REGISTRATION_PORT = 1099;
 	public static final int MULTICAST_PORT = 4321;
+	private static int FILE_PORT = 9000;
 	
 	//Server settings
 	public static final int MAX_SECTIONS = 9;				//Necessariamente inferiore a 256 per writeByte o comportamento instabile, a prescindere viene controllato
@@ -27,4 +28,13 @@ public class Configurations {
 	
 	//Debug
 	public static final boolean DEBUG = true;				//mostra alcune stampe extra per il controllo del flusso
+
+	public synchronized static void incrementPort() {
+		FILE_PORT+=20;
+	}
+	
+	public synchronized static int getPort() {
+		return FILE_PORT;
+	}
+
 }

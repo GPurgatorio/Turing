@@ -9,7 +9,14 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -29,24 +36,49 @@ public class GUILoggedClass extends JFrame {
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
+	private static SocketChannel clientChannel;
+	private static ServerSocketChannel serverSocket;
 	private static NotSoGUIListener l;
 	private Image createDocImg, inviteImg, showImg, listImg, editImg, logoutImg;
 	private JButton createDocButton, inviteButton, editButton, listButton, showButton, logoutButton;
 	private JLabel userLabel;
 	
-	public GUILoggedClass(Socket s, String usr) throws IOException {
+	public GUILoggedClass(Socket s, SocketChannel c, ServerSocketChannel ssc, String usr, String fromWhat) throws IOException {
+
 		clientSocket = s;
+		clientChannel = c;
+		serverSocket = ssc;
+		username = usr;
 		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 		inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		
-		username = usr;
+		if(serverSocket == null)
+			createServerSocketChannel();
+		
+		if(clientChannel == null)
+			clientChannel = acceptServerSocket();
+		
 		clientUI();
-		invitesListener();
-		checkPendingInvites();
+		
+		if(fromWhat.equals("login")) {
+			checkPendingInvites();
+			invitesListener();
+		}
 		
 		if(Configurations.DEBUG)			//Per evitare confusione tra le varie consoles, un punto di riferimento
 			System.out.println("Console di: " + username);
 	}
+	
+	private void createServerSocketChannel() throws IOException {
+        serverSocket = ServerSocketChannel.open();
+        serverSocket.socket().bind(new InetSocketAddress(username.hashCode() % 10000));
+	}
+	
+	private SocketChannel acceptServerSocket() throws IOException {
+        SocketChannel client = null;
+		client = serverSocket.accept();
+        return client;
+    }
 
 	//Listener per gli inviti live (durante il periodo in cui l'utente è online)
 	private void invitesListener() {
@@ -180,6 +212,9 @@ public class GUILoggedClass extends JFrame {
 		add(userLabel);
 	}
 	
+	
+	//			***CREATE DOCUMENT***
+	
 	public void createDocRequest() throws IOException {
 		
 		JTextField docLabel = new JTextField();
@@ -235,6 +270,9 @@ public class GUILoggedClass extends JFrame {
 		}
 	}
 	
+	
+	//			***INVITE***
+	
 	public void inviteRequest() throws IOException {
 		
 		JTextField docLabel = new JTextField();
@@ -266,13 +304,6 @@ public class GUILoggedClass extends JFrame {
 		
 		res = inFromServer.readLine();							//risultato richiesta
 		
-		/*
-		if(res == null) {
-			if(Configurations.DEBUG)
-				System.err.println("res è null");
-			return;
-		}*/
-		
 		switch(res) {
 			case "SUCCESS":
 				JOptionPane.showMessageDialog(null, "Utente " + user + " invitato con successo al documento " + docName + "!" );
@@ -297,6 +328,9 @@ public class GUILoggedClass extends JFrame {
 				break;
 		}
 	}
+	
+	
+	//			***SHOW***
 
 	public void showRequest() throws IOException {
 		
@@ -335,6 +369,51 @@ public class GUILoggedClass extends JFrame {
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(sections);		
 		
+		//DOWNLOAD DEL FILE
+		
+		File x, dir = new File("Downloads/" + username);
+		
+		if(!dir.exists())
+			dir.mkdir();
+		
+		if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+			x = new File("Downloads/" + username, docName + sections + ".txt");
+		else
+			x = new File("Downloads/" + username, docName + "_COMPLETE.txt");
+		
+		if(x.exists())
+			x.delete();
+		x.createNewFile();
+		
+		FileChannel outChannel;
+		
+		if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+			outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + sections + ".txt"),	StandardOpenOption.WRITE);
+		else
+			outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
+		
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+		boolean stop = false;
+		
+		while(!stop) {
+
+			int bytesRead = clientChannel.read(buffer);
+			if (bytesRead == -1) {
+				stop=true;
+			}
+			buffer.flip();
+			while (buffer.hasRemaining())
+				outChannel.write(buffer);
+			buffer.clear();
+		}
+		clientChannel.close();
+		outChannel.close(); 
+        
+		clientChannel = null;
+		clientChannel = acceptServerSocket();
+		
+        System.err.println("Received File Successfully!");
+		
 		res = inFromServer.readLine();						//risultato richiesta
 		
 		switch(res) {
@@ -357,6 +436,9 @@ public class GUILoggedClass extends JFrame {
 				break;
 		}
 	}
+	
+	
+	//			***LIST***
 	
 	public void listRequest() throws IOException {
 	
@@ -397,6 +479,9 @@ public class GUILoggedClass extends JFrame {
 				break;
 		}
 	}
+	
+	
+	//			***EDIT***
 
 	public void editRequest() throws IOException {
 		
@@ -433,6 +518,44 @@ public class GUILoggedClass extends JFrame {
 		outToServer.writeByte(section);
 		
 		String tmp = inFromServer.readLine();					//risultato richiesta
+	
+		if(tmp.startsWith("2")) {
+			
+			//DOWNLOAD DEL FILE
+			
+			File x, dir = new File("Editing/" + username);
+			
+			if(!dir.exists())
+				dir.mkdir();
+			
+			x = new File("Editing/" + username, docName + section + ".txt");
+			
+			if(x.exists())
+				x.delete();
+			x.createNewFile();
+			
+			FileChannel outChannel = FileChannel.open(Paths.get("Editing/" + username + "/" + docName + section + ".txt"), StandardOpenOption.WRITE);
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+			boolean stop = false;
+			
+			while(!stop) {
+	
+				int bytesRead = clientChannel.read(buffer);
+				if (bytesRead == -1) {
+					stop=true;
+				}
+				buffer.flip();
+				while (buffer.hasRemaining())
+					outChannel.write(buffer);
+				buffer.clear();
+			}
+			clientChannel.close();
+			outChannel.close(); 
+	        
+			clientChannel = null;
+			clientChannel = acceptServerSocket();
+		}		
+		
 		
 		if(tmp.startsWith("2"))									//è un indirizzo
 			res = "SUCCESS";									//TODO: change con regex dell'es di laboratorio Weblog se hai tempo
@@ -443,7 +566,7 @@ public class GUILoggedClass extends JFrame {
 		switch(res) {
 			case "SUCCESS":
 				this.dispose();		//passo alla modalità Editing
-				GUIEditClass w = new GUIEditClass(clientSocket, username, tmp, docName, section);
+				GUIEditClass w = new GUIEditClass(clientSocket, clientChannel, serverSocket, username, tmp, docName, section);
 				username = "";
 				w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);
 				w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
@@ -457,6 +580,9 @@ public class GUILoggedClass extends JFrame {
 				break;
 		}
 	}
+	
+	
+	//			***LOGOUT***
 
 	public void logoutRequest() throws IOException {
 		
@@ -470,7 +596,7 @@ public class GUILoggedClass extends JFrame {
 			username = "";
 			l.disable();
 			this.dispose();
-			GUIClass w = new GUIClass(clientSocket);			//torno alla schermata di login/register (connessione persistente)
+			GUIClass w = new GUIClass(clientSocket, clientChannel, serverSocket);			//torno alla schermata di login/register (connessione persistente)
 			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);

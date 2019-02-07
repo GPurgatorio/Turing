@@ -51,6 +51,18 @@ public class Turing {
 
         Registry registry = LocateRegistry.createRegistry(Configurations.REGISTRATION_PORT);
         registry.bind(RegistrationInterface.SERVICE_NAME, stub);
+        
+        File dir = new File("Documents/");		//dove vengono salvati i documenti (lato server)
+        if(!dir.exists())
+        	dir.mkdir();
+		
+		dir = new File ("Downloads/");			//per il comando Show (lato client)
+		if(!dir.exists())
+			dir.mkdir();
+		
+		dir = new File("Editing/");				//per il comando Edit/EndEdit (lato client)
+		if(!dir.exists())
+			dir.mkdir();
 	}
 	
 	private static void boredInit() throws UnknownHostException {
@@ -134,6 +146,27 @@ public class Turing {
 			return u.getPendingInvites();
 		}
 	}
+	
+	static Set<String> getInstaInvites(String nameServed) {
+		Set<String> tmp = null;
+		
+		synchronized(updateDB) {
+			User u = database.get(nameServed);
+			
+			if(u != null) 
+				tmp = u.getInstaInvites();
+		}
+		
+		return tmp;
+	}
+	
+	static void resetInvites(String username) {
+		database.get(username).resetPendingInvites();
+	}
+
+	static void resetInstaInvites(String username) {
+		database.get(username).resetInstaInvites();
+	}
 
 	static boolean disconnect (String username) {
 		
@@ -180,14 +213,13 @@ public class Turing {
 			
 			docs.put(docName, d);
 			database.get(creator).addToEditableDocs(docName);
-			
 		}
 		
-		File dir = new File(docName);
+		File dir = new File("Documents/" + docName);
 		dir.mkdir();
 		
 		for(int i = 0; i < sections; i++) {
-			File x = new File(docName, docName + i + ".txt");
+			File x = new File("Documents/" + docName, docName + i + ".txt");
 			try {
 				x.createNewFile();
 			} catch (IOException e) { e.printStackTrace(); }
@@ -246,45 +278,6 @@ public class Turing {
 		return 0;
 	}
 	
-	static String editDoc(String username, String docName, int section) {
-		
-		synchronized(updateDB) {
-			Document d = docs.get(docName);
-			
-			if(database.get(username) == null || d == null) {
-				System.err.println("User non esistente || Documento inesistente");
-				return "NULL";
-			}
-			
-			if(!d.isCreator(username) && !d.isEditor(username)) {
-				System.err.println(username + " non può modificare questo documento.");
-				return "UNABLE";
-			}
-			
-			if(d.isLocked(section)) {
-				System.err.println("Qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
-				return "LOCK";
-			}
-			
-			d.editSection(section);			//change
-			System.out.println(username + " sta ora modificando la sezione " + section + " di " + docName);
-			
-			String res = d.getAddr().toString();
-			res = (String) res.subSequence(1, res.length());			//l'indirizzo ha uno / iniziale, lo tolgo
-			return res;
-		}
-	}
-
-	static String endEdit(String username, String docName, int section) {
-		
-		synchronized(updateDB) {
-			//TODO
-			Document d = docs.get(docName);
-			d.unlockSection(section);
-			return "SUCCESS";
-		}
-	}
-	
 	static String getDocs(String username) {
 		
 		String res = null;
@@ -309,53 +302,40 @@ public class Turing {
 		res = res + '\n';
 		return res;
 	}
-
-	public static void sendSection(SocketChannel sc) {
-		//TODO
-	}
-
-	public static Set<String> getInstaInvites(String nameServed) {
-		Set<String> tmp = null;
-		
-		synchronized(updateDB) {
-			User u = database.get(nameServed);
-			
-			if(u != null) 
-				tmp = u.getInstaInvites();
-		}
-		
-		return tmp;
-	}
 	
-	static void resetInvites(String username) {
-		database.get(username).resetPendingInvites();
-	}
-
-	public static void resetInstaInvites(String username) {
-		database.get(username).resetInstaInvites();
-	}
-
-	static int getFile(String username, String docName, int section) throws IOException {
-		int res = 0;
+	static String editDoc(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
+		
+		Document d = null;
+		String res = null;
 		
 		synchronized(updateDB) {
-			if(!docs.containsKey(docName))
-				return -1;
-			else if(docs.get(docName).isLocked(section))
-				res = 1;
-				
-			FileChannel inChannel = FileChannel.open(Paths.get(docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
-			File dir = new File("Downloads_" + username);
-			if(!dir.exists())
-				dir.mkdir();
-			File x = new File("Downloads_" + username, docName + section + ".txt");
-			if(x.exists())
-				x.delete();
-			x.createNewFile();
-			FileChannel outChannel = FileChannel.open(Paths.get("Downloads_" + username + "/" + docName + section + ".txt"),	StandardOpenOption.WRITE);
+			d = docs.get(docName);
+			
+			if(database.get(username) == null || d == null) {
+				System.err.println("User non esistente || Documento inesistente");
+				return "NULL";
+			}
+			
+			if(!d.isCreator(username) && !d.isEditor(username)) {
+				System.err.println(username + " non può modificare questo documento.");
+				return "UNABLE";
+			}
+			
+			if(d.isLocked(section)) {
+				System.err.println("Qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
+				return "LOCK";
+			}
+			
+			if(!d.editSection(section))
+				return "TRYLOCK";
+			
+			if(d.locks.size() <= section)
+				return "OOB";
+			
+			FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			
-			boolean stop=false;
+			boolean stop = false;
 			
 			while (!stop) { 
 				int bytesRead=inChannel.read(buffer);
@@ -364,17 +344,85 @@ public class Turing {
 				}
 				buffer.flip();
 				while (buffer.hasRemaining())
-					outChannel.write(buffer);
+					clientChannel.write(buffer);
 				buffer.clear();
 			}
+			clientChannel.close();
 			inChannel.close(); 
-			outChannel.close();
+			res = d.getAddr().toString();
 		}
 		
+		System.out.println(username + " sta ora modificando la sezione " + section + " di " + docName);
+		
+		res = (String) res.subSequence(1, res.length());			//l'indirizzo ha uno / iniziale, lo tolgo
 		return res;
 	}
 
-	static int getDocument(String username, String docName) throws IOException {
+	static String endEdit(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
+		
+		Document d = null;
+		synchronized(updateDB) {
+			d = docs.get(docName);
+			
+			File x = new File("Documents/" + docName, docName + section + ".txt");
+			if(x.exists())
+				x.delete();
+			x.createNewFile();
+			FileChannel outChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"),	StandardOpenOption.WRITE);
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+			
+			boolean stop=false;
+			
+			while (!stop) { 
+				int bytesRead=clientChannel.read(buffer);
+				if (bytesRead==-1) {
+					stop=true;
+				}
+				buffer.flip();
+				while (buffer.hasRemaining())
+					outChannel.write(buffer);
+				buffer.clear();
+			}
+			clientChannel.close(); 
+			outChannel.close();
+			
+			d.unlockSection(section);
+			
+		}
+		return "SUCCESS";
+	}
+
+	static int getFile(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
+		int res = 0;
+		
+		synchronized(updateDB) {
+			
+			if(!docs.containsKey(docName))
+				return -1;
+			else if(docs.get(docName).isLocked(section))
+				res = 1;
+				
+			FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+			boolean stop = false;
+			
+			while (!stop) { 
+				int bytesRead=inChannel.read(buffer);
+				if (bytesRead==-1) {
+					stop=true;
+				}
+				buffer.flip();
+				while (buffer.hasRemaining())
+					clientChannel.write(buffer);
+				buffer.clear();
+			}
+			clientChannel.close();
+			inChannel.close(); 
+		}
+		return res;
+	}
+
+	static int getDocument(String username, String docName, SocketChannel clientChannel) throws IOException {
 		int res = 0;
 		
 		synchronized(updateDB) {
@@ -390,40 +438,36 @@ public class Turing {
 				}
 			}
 			
-			File dir = new File("Downloads_" + username);
-			if(!dir.exists())
-				dir.mkdir();
-			
-			File x = new File("Downloads_" + username, docName + "_COMPLETE.txt");
-			x.createNewFile();
-			FileChannel outChannel = FileChannel.open(Paths.get("Downloads_" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			
 			for(int i = 0; i < d.locks.size(); i++) {
-				FileChannel inChannel = FileChannel.open(Paths.get(docName + "/" + docName + i + ".txt"), StandardOpenOption.READ);
-				boolean stop=false;
+				
+				FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + i + ".txt"), StandardOpenOption.READ);
+				boolean stop = false;
 				
 				while (!stop) { 
 					int bytesRead=inChannel.read(buffer);
-					if (bytesRead==-1)
+					if (bytesRead==-1) {
 						stop=true;
-					
+					}
 					buffer.flip();
 					while (buffer.hasRemaining())
-						outChannel.write(buffer);
+						clientChannel.write(buffer);
 					buffer.clear();
 				}
 				inChannel.close(); 
-				//mando a capo per il cambio di file
-				buffer.put((byte) '\n');
-				buffer.flip();
-				while(buffer.hasRemaining())
-					outChannel.write(buffer);
-				buffer.clear();
 			}
-			outChannel.close();
+			clientChannel.close();
+		}
+		return res;
+	}
+
+	public static void unlock(String nameServed, String docServed, int sectionDoc) {
+
+		synchronized(updateDB) {
+			Document d = docs.get(docServed);
+			d.locks.get(sectionDoc).unlock();
 		}
 		
-		return res;
 	}
 }

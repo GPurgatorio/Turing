@@ -3,7 +3,11 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -15,12 +19,14 @@ public class RequestHandler implements Runnable {
 	private Socket clientSocket;
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
+	private SocketChannel clientChannel = null;
+	private ServerSocketChannel socketChannel;
 	
 	public RequestHandler(Socket s) throws IOException {
 		clientSocket = s;
 		inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		outToClient = new DataOutputStream(clientSocket.getOutputStream());
-		sectionDoc = -1;
+		sectionDoc = -1;	
 	}
 	
 	@Override
@@ -50,8 +56,15 @@ public class RequestHandler implements Runnable {
 					
 					outToClient.writeBytes(answer);
 					
-					if(answer.equals("SUCCESS\n"))
+					if(answer.equals("SUCCESS\n")) {
 						sendPendingInvites();
+						
+						//creo channel
+						if(clientChannel == null)
+							clientChannel = createChannel();
+						
+					}
+					
 				}
 			
 				else if(command.equals("logout")) {
@@ -119,13 +132,17 @@ public class RequestHandler implements Runnable {
 					docServed = docName;
 					sectionDoc = section;
 					
-					String res = Turing.editDoc(username, docName, section);
+					String res = Turing.editDoc(username, docName, section, clientChannel);
 					
-					//TODO
-					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK")) 
+					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK") || res.equals("OOB")) 
 						outToClient.writeBytes("ERROR" + '\n');
-					else 
+					else {
+						
 						outToClient.writeBytes(res + '\n');		//success
+						
+						clientChannel = null;
+						clientChannel = createChannel();
+					}
 				}
 				
 				else if (command.equals("endEdit")) {
@@ -134,11 +151,15 @@ public class RequestHandler implements Runnable {
 					docName = inFromClient.readLine();
 					int section = inFromClient.read();
 					
-					String res = Turing.endEdit(username, docName, section);
+					String res = Turing.endEdit(username, docName, section, clientChannel);
 					
 					sectionDoc = -1;
 					docServed = "";
+					
 					outToClient.writeBytes(res + '\n');
+					
+					clientChannel = null;
+					clientChannel = createChannel();
 				}
 				
 				else if (command.equals("list")) {
@@ -157,9 +178,12 @@ public class RequestHandler implements Runnable {
 					int res = 2;
 
 					if(section <= Configurations.MAX_SECTIONS) 
-						res = Turing.getFile(username, docName, section);
+						res = Turing.getFile(username, docName, section, clientChannel);
 					else
-						res = Turing.getDocument(username, docName);
+						res = Turing.getDocument(username, docName, clientChannel);
+					
+					clientChannel = null;
+					clientChannel = createChannel();
 					
 					if(res == 0)
 						outToClient.writeBytes("SUCCESS" + '\n');
@@ -176,13 +200,21 @@ public class RequestHandler implements Runnable {
 					clientSocket.close();
 					Turing.disconnect(nameServed);
 					if(sectionDoc != -1) 			//unlock in caso di crash
-						Turing.endEdit(nameServed, docServed, sectionDoc);
+						Turing.unlock(nameServed, docServed, sectionDoc);
 					flag = false;
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 			}
 		} while(flag);
+	}
+
+	private SocketChannel createChannel() throws IOException {
+		SocketChannel socketChannel = SocketChannel.open();
+		System.err.println("NameServed:" + nameServed);
+        SocketAddress socketAddr = new InetSocketAddress("localhost", nameServed.hashCode() % 10000);
+        socketChannel.connect(socketAddr);
+        return socketChannel;
 	}
 
 	private void sendPendingInvites() {
