@@ -6,7 +6,6 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
@@ -20,7 +19,6 @@ public class RequestHandler implements Runnable {
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
 	private SocketChannel clientChannel = null;
-	private ServerSocketChannel socketChannel;
 	
 	public RequestHandler(Socket s) throws IOException {
 		clientSocket = s;
@@ -132,16 +130,29 @@ public class RequestHandler implements Runnable {
 					docServed = docName;
 					sectionDoc = section;
 					
-					String res = Turing.editDoc(username, docName, section, clientChannel);
+					int c = Turing.checkFile(username, docName, section);
 					
-					if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK") || res.equals("OOB")) 
-						outToClient.writeBytes("ERROR" + '\n');
+					System.err.println(c);
+					
+					if(c == -5) 
+						outToClient.writeBytes("OOB" + '\n');
+					
 					else {
+						if(c < 0)
+							System.err.println("c è < 0 be careful");
 						
-						outToClient.writeBytes(res + '\n');		//success
+						outToClient.writeBytes("ok" + '\n');
+						String res = Turing.editDoc(username, docName, section, clientChannel);
 						
-						clientChannel = null;
-						clientChannel = createChannel();
+						if(res.equals("NULL") || res.equals("UNABLE") || res.equals("LOCK") || res.equals("TRYLOCK") || res.equals("OOB")) 
+							outToClient.writeBytes(res + '\n');
+						
+						else {
+							outToClient.writeBytes(res + '\n');		//success
+							
+							clientChannel = null;
+							clientChannel = createChannel();
+						}
 					}
 				}
 				
@@ -176,24 +187,46 @@ public class RequestHandler implements Runnable {
 					docName = inFromClient.readLine();
 					int section = inFromClient.read();
 					int res = 2;
-
-					if(section <= Configurations.MAX_SECTIONS) 
-						res = Turing.getFile(username, docName, section, clientChannel);
-					else
-						res = Turing.getDocument(username, docName, clientChannel);
 					
-					clientChannel = null;
-					clientChannel = createChannel();
+					int c = Turing.checkFile(username, docName, section);
+					String check = null;
 					
-					if(res == 0)
-						outToClient.writeBytes("SUCCESS" + '\n');
-					else if(res == 1)
-						outToClient.writeBytes("EDITING" + '\n');
-					else if(res == -1)
-						outToClient.writeBytes("NOT_EXIST" + '\n');
+					if(c == -1) 
+						check = "NO_EXIST";
+					if(c == -2)
+						check = "HACKER";
+					if(c == -3)
+						check = "UNABLE";
+					if(c == -4)
+						check = "UNABLEU";
+					if(c == -5)
+						check = "OOB";
 					else
-						outToClient.writeBytes("ERROR" + '\n');
+						check = "SUCCESS";
+					
+					outToClient.writeBytes(check + '\n');
+					
+					if(check.equals("SUCCESS")) {
+	
+						if(section < c) 
+							res = Turing.getFile(username, docName, section, clientChannel);
+						else
+							res = Turing.getDocument(username, docName, clientChannel);
+						
+						clientChannel = null;
+						clientChannel = createChannel();
+						
+						if(res == 0)
+							outToClient.writeBytes("SUCCESS" + '\n');
+						else if(res == 1)
+							outToClient.writeBytes("EDITING" + '\n');
+						else if(res == -1)
+							outToClient.writeBytes("NO_EXIST" + '\n');
+						else
+							outToClient.writeBytes("ERROR" + '\n');
+					}
 				}
+					
 			}
 			catch (Exception e) {
 				try {
@@ -211,8 +244,10 @@ public class RequestHandler implements Runnable {
 
 	private SocketChannel createChannel() throws IOException {
 		SocketChannel socketChannel = SocketChannel.open();
-		System.err.println("NameServed:" + nameServed);
-        SocketAddress socketAddr = new InetSocketAddress("localhost", nameServed.hashCode() % 10000);
+		int port = nameServed.hashCode() % 65535;
+        if(port < 1024)		//evito le porte "Well-known" [0-1023]
+        	port += 1024;
+        SocketAddress socketAddr = new InetSocketAddress("localhost", port);
         socketChannel.connect(socketAddr);
         return socketChannel;
 	}

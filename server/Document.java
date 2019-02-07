@@ -42,7 +42,7 @@ public class Document {
 	}
 	
 	public boolean isEditor(String receiver) {
-		return this.editors.contains(receiver);
+		return (this.editors.contains(receiver) || this.creator.equals(receiver));
 	}
 	
 	public boolean isLocked(int section) {

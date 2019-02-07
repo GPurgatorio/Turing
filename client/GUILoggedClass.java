@@ -71,7 +71,10 @@ public class GUILoggedClass extends JFrame {
 	
 	private void createServerSocketChannel() throws IOException {
         serverSocket = ServerSocketChannel.open();
-        serverSocket.socket().bind(new InetSocketAddress(username.hashCode() % 10000));
+        int port = username.hashCode() % 65535;
+        if(port < 1024)		//evito le porte "Well-known" [0-1023]
+        	port += 1024;
+        serverSocket.socket().bind(new InetSocketAddress(port));
 	}
 	
 	private SocketChannel acceptServerSocket() throws IOException {
@@ -242,7 +245,7 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (sections < 1 || sections > Configurations.MAX_SECTIONS || docName == null || !docName.matches("[a-zA-Z0-9]+"));	//prendi inputs corretti || stop
+		} while (sections < 1 || sections > Configurations.MAX_SECTIONS || docName == null || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
 		
 		outToServer.writeBytes("createDoc" + '\n');			//richiesta
 		
@@ -294,7 +297,7 @@ public class GUILoggedClass extends JFrame {
 			}
 			else
 				return;
-		} while (docName == null || user == null || !docName.matches("[a-zA-Z0-9]+") || !user.matches("[a-zA-Z0-9]+"));				//prendi inputs corretti || stop
+		} while (docName == null || user == null || !docName.matches(Configurations.VALID_CHARACTERS) || !user.matches(Configurations.VALID_CHARACTERS));				//prendi inputs corretti || stop
 		
 		outToServer.writeBytes("invite" + '\n');				//richiesta
 		
@@ -361,60 +364,69 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (docName == null || sections < 0 || sections > 255 || !docName.matches("[a-zA-Z0-9]+"));	//prendi inputs corretti || stop
+		} while (docName == null || sections < 0 || sections > 255 || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
 		
 		outToServer.writeBytes("show" + '\n');				//richiesta
 		
 		outToServer.writeBytes(username + '\n');			//inputs per la richiesta
 		outToServer.writeBytes(docName + '\n');
-		outToServer.writeByte(sections);		
+		outToServer.writeByte(sections);	
 		
-		//DOWNLOAD DEL FILE
+		res = inFromServer.readLine();
 		
-		File x, dir = new File("Downloads/" + username);
-		
-		if(!dir.exists())
-			dir.mkdir();
-		
-		if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
-			x = new File("Downloads/" + username, docName + sections + ".txt");
-		else
-			x = new File("Downloads/" + username, docName + "_COMPLETE.txt");
-		
-		if(x.exists())
-			x.delete();
-		x.createNewFile();
-		
-		FileChannel outChannel;
-		
-		if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
-			outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + sections + ".txt"),	StandardOpenOption.WRITE);
-		else
-			outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
-		
-		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
-		boolean stop = false;
-		
-		while(!stop) {
-
-			int bytesRead = clientChannel.read(buffer);
-			if (bytesRead == -1) {
-				stop=true;
+		if(res.equals("SUCCESS")) {
+			
+			//DOWNLOAD DEL FILE
+			
+			File gen = new File ("Downloads/");			
+			if(!gen.exists())
+				gen.mkdir();
+			
+			File x, dir = new File("Downloads/" + username);
+			
+			if(!dir.exists())
+				dir.mkdir();
+			
+			if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+				x = new File("Downloads/" + username, docName + sections + ".txt");
+			else
+				x = new File("Downloads/" + username, docName + "_COMPLETE.txt");
+			
+			if(x.exists())
+				x.delete();
+			x.createNewFile();
+			
+			FileChannel outChannel;
+			
+			if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + sections + ".txt"),	StandardOpenOption.WRITE);
+			else
+				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
+			
+			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+			boolean stop = false;
+			
+			while(!stop) {
+	
+				int bytesRead = clientChannel.read(buffer);
+				if (bytesRead == -1) {
+					stop=true;
+				}
+				buffer.flip();
+				while (buffer.hasRemaining())
+					outChannel.write(buffer);
+				buffer.clear();
 			}
-			buffer.flip();
-			while (buffer.hasRemaining())
-				outChannel.write(buffer);
-			buffer.clear();
+			clientChannel.close();
+			outChannel.close(); 
+	        
+			clientChannel = null;
+			clientChannel = acceptServerSocket();
+			
+	        System.err.println("Received File Successfully!");
+			
+			res = inFromServer.readLine();						//risultato richiesta
 		}
-		clientChannel.close();
-		outChannel.close(); 
-        
-		clientChannel = null;
-		clientChannel = acceptServerSocket();
-		
-        System.err.println("Received File Successfully!");
-		
-		res = inFromServer.readLine();						//risultato richiesta
 		
 		switch(res) {
 			case "SUCCESS":
@@ -426,8 +438,20 @@ public class GUILoggedClass extends JFrame {
 			case "EDITING":
 				JOptionPane.showMessageDialog(null, "Documento " + docName + " scaricato. Qualcuno ci sta lavorando sopra!", "Section Not Up To Date", JOptionPane.INFORMATION_MESSAGE);
 				break;
-			case "NOT_EXIST":
+			case "NO_EXIST":
 				JOptionPane.showMessageDialog(null, "Il documento " + docName + " non esiste", "Error", JOptionPane.ERROR_MESSAGE);
+				break;
+			case "HACKER":
+				JOptionPane.showMessageDialog(null, "User non registrato (?)", "Error", JOptionPane.ERROR_MESSAGE);
+				break;
+			case "UNABLE":
+				JOptionPane.showMessageDialog(null, "Non sei editor del documento (D)", "Error", JOptionPane.ERROR_MESSAGE);
+				break;
+			case "UNABLEU":
+				JOptionPane.showMessageDialog(null, "Non sei editor del documento (U)", "Error", JOptionPane.ERROR_MESSAGE);
+				break;
+			case "OOB":
+				JOptionPane.showMessageDialog(null, "Hai richiesto una sezione non globale ed Out Of Bound.", "Error", JOptionPane.ERROR_MESSAGE);
 				break;
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico.");
@@ -471,9 +495,8 @@ public class GUILoggedClass extends JFrame {
 			case "SUCCESS":
 				JOptionPane.showMessageDialog(null, "Lista Documenti: \n\n" + res );
 				break;
-				//TODO
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico.");
+				JOptionPane.showMessageDialog(null, "Errore generico (?)");
 				if(Configurations.DEBUG)
 					System.err.println(res);
 				break;
@@ -509,7 +532,7 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				section = -1;
 			}
-		} while (docName == null || section < 0 || section > Configurations.MAX_LENGTH || !docName.matches("[a-zA-Z0-9]+"));		//prendi inputs corretti || stop
+		} while (docName == null || section < 0 || section > Configurations.MAX_LENGTH || !docName.matches(Configurations.VALID_CHARACTERS));		//prendi inputs corretti || stop
 
 		outToServer.writeBytes("editDoc" + '\n');				//richiesta
 		
@@ -517,14 +540,24 @@ public class GUILoggedClass extends JFrame {
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(section);
 		
+		String check = inFromServer.readLine();
+		
+		if(check.equals("OOB")) {
+			JOptionPane.showMessageDialog(null, "Sezione oltre numero sezioni del documento.", "Out Of Bounds", JOptionPane.ERROR_MESSAGE);
+			return;
+		}
+		
 		String tmp = inFromServer.readLine();					//risultato richiesta
 	
 		if(tmp.startsWith("2")) {
 			
 			//DOWNLOAD DEL FILE
 			
-			File x, dir = new File("Editing/" + username);
+			File gen = new File("Editing/");				
+			if(!gen.exists())
+				gen.mkdir();
 			
+			File x, dir = new File("Editing/" + username);
 			if(!dir.exists())
 				dir.mkdir();
 			
@@ -541,24 +574,21 @@ public class GUILoggedClass extends JFrame {
 			while(!stop) {
 	
 				int bytesRead = clientChannel.read(buffer);
-				if (bytesRead == -1) {
+				if (bytesRead == -1) 
 					stop=true;
-				}
 				buffer.flip();
 				while (buffer.hasRemaining())
 					outChannel.write(buffer);
 				buffer.clear();
 			}
+			
 			clientChannel.close();
 			outChannel.close(); 
 	        
 			clientChannel = null;
 			clientChannel = acceptServerSocket();
+			res = "SUCCESS";
 		}		
-		
-		
-		if(tmp.startsWith("2"))									//è un indirizzo
-			res = "SUCCESS";									//TODO: change con regex dell'es di laboratorio Weblog se hai tempo
 		
 		else
 			res = "ERROR";
@@ -572,7 +602,17 @@ public class GUILoggedClass extends JFrame {
 				w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 				w.setVisible(true);
 				break;
-			//TODO
+			case "ERROR":
+				if(tmp.equals("NULL"))
+					JOptionPane.showMessageDialog(null, "Documento (o User..) non esistente.", "Error", JOptionPane.ERROR_MESSAGE);
+				else if(tmp.equals("UNABLE"))
+					JOptionPane.showMessageDialog(null, "Non puoi modificare questo documento.", "Unable", JOptionPane.ERROR_MESSAGE);					
+				else if(tmp.equals("LOCK"))
+					JOptionPane.showMessageDialog(null, "La sezione sta già venendo modificata da qualcun altro!", "Error", JOptionPane.ERROR_MESSAGE);
+				else if(tmp.equals("TRYLOCK"))
+					JOptionPane.showMessageDialog(null, "TryLock ha fallito.", "TryLock", JOptionPane.ERROR_MESSAGE);
+				else if(tmp.equals("OOB"))
+					JOptionPane.showMessageDialog(null, "Fuori dal numero di sezioni", "Out of Bounds", JOptionPane.ERROR_MESSAGE);
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico.");
 				if(Configurations.DEBUG)

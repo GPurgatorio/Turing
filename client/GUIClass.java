@@ -8,7 +8,6 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -39,6 +38,7 @@ public class GUIClass extends JFrame {
 	private static Socket clientSocket;
 	private static SocketChannel clientChannel;
 	private static ServerSocketChannel serverSocket;
+	private boolean offline;
 	
 	private JPasswordField passField;
 	private JTextField userField;
@@ -47,7 +47,6 @@ public class GUIClass extends JFrame {
 	private JLabel userLabel;
 	private JLabel passLabel;
 	private JLabel logo;
-	private boolean offline;
 
 	public GUIClass() {
 		init();
@@ -63,7 +62,7 @@ public class GUIClass extends JFrame {
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
 			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		} catch (IOException e) { e.printStackTrace(); }
-		System.err.println("GUIClass da LoggedClass");
+
 		loginUI();
 	}
 	
@@ -78,7 +77,6 @@ public class GUIClass extends JFrame {
 	private void init() {
 		offline = false;
 		clientChannel = null;
-		//serverSocket = null;
 		
 		try {
 			clientSocket = new Socket("localhost", Configurations.DEFAULT_PORT);

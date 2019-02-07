@@ -52,17 +52,10 @@ public class Turing {
         Registry registry = LocateRegistry.createRegistry(Configurations.REGISTRATION_PORT);
         registry.bind(RegistrationInterface.SERVICE_NAME, stub);
         
-        File dir = new File("Documents/");		//dove vengono salvati i documenti (lato server)
+        File dir = new File("Documents/");		//dove vengono salvati i documenti
         if(!dir.exists())
         	dir.mkdir();
 		
-		dir = new File ("Downloads/");			//per il comando Show (lato client)
-		if(!dir.exists())
-			dir.mkdir();
-		
-		dir = new File("Editing/");				//per il comando Edit/EndEdit (lato client)
-		if(!dir.exists())
-			dir.mkdir();
 	}
 	
 	private static void boredInit() throws UnknownHostException {
@@ -204,7 +197,7 @@ public class Turing {
 				try {
 					addr = InetAddress.getByName(aux);
 					if(Configurations.DEBUG && multicastAddresses.contains(addr))
-						System.err.println("Questa stampa è solo per vedere se, in sede d'esame, l'aver gestito questa cosa statisticamente impossibile mi farà fare una risata");
+						System.err.println("Una cosa altamente improbabile non è impossibile.");
 				} catch (UnknownHostException e) { e.printStackTrace(); }
 			} while(!addr.isMulticastAddress() && multicastAddresses.contains(addr));
 			
@@ -285,6 +278,8 @@ public class Turing {
 			User u = database.get(username);
 			Object[] uDocs = u.getDocs().toArray();
 			
+			res = "Nessun documento.";
+			
 			for(int i = 0; i < uDocs.length; i++) {
 				
 				Document d = docs.get(uDocs[i]);
@@ -292,7 +287,7 @@ public class Turing {
 				if(edtr == null)
 					edtr = "Nessuno.";			//evita di mostrare "null" nel risultato del Pannello del client
 				
-				if(res == null) 
+				if(res.equals("Nessun documento.")) 
 					res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
 				else
 					res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
@@ -469,5 +464,33 @@ public class Turing {
 			d.locks.get(sectionDoc).unlock();
 		}
 		
+	}
+
+	public static int checkFile(String username, String docName, int section) {
+		
+		Document d = null;
+		User u = null;
+		
+		synchronized(updateDB) {
+			d = docs.get(docName);
+			u = database.get(username);
+		}
+		
+		if(d == null)
+			return -1;
+		
+		if(u == null)
+			return -2;
+		
+		if(!d.isEditor(username))
+			return -3;
+		
+		if(!u.isEditor(docName))
+			return -4;
+		
+		if(section >= d.locks.size() && section <= Configurations.MAX_SECTIONS)
+			return -5;
+		
+		return d.locks.size();
 	}
 }
