@@ -274,10 +274,12 @@ public class Turing {
 	static String getDocs(String username) {
 		
 		String res = null;
+		int antiBug = 0;
+		
 		synchronized(updateDB) {
 			User u = database.get(username);
 			Object[] uDocs = u.getDocs().toArray();
-			
+			antiBug = uDocs.length;
 			res = "Nessun documento.";
 			
 			for(int i = 0; i < uDocs.length; i++) {
@@ -294,7 +296,8 @@ public class Turing {
 				res = res + '\n';		//per dare spazio tra info di un doc ed un altro
 			}
 		}
-		res = res + '\n';
+		if(antiBug != 0)
+			res = res + '\n';
 		return res;
 	}
 	
@@ -492,5 +495,22 @@ public class Turing {
 			return -5;
 		
 		return d.locks.size();
+	}
+
+	public static boolean checkPermissions(String username, String docName) {
+		synchronized(updateDB) {
+			User u = database.get(username);
+			Document d = docs.get(docName);
+			
+			if(u==null || d ==null)
+				return false;
+			
+			if(!u.isEditor(docName))
+				return false;
+			
+			if(!d.isEditor(username))
+				return false;
+		}
+		return true;
 	}
 }

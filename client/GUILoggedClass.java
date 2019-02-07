@@ -72,6 +72,8 @@ public class GUILoggedClass extends JFrame {
 	private void createServerSocketChannel() throws IOException {
         serverSocket = ServerSocketChannel.open();
         int port = username.hashCode() % 65535;
+        if(port < 0) 
+        	port = -port % 65535;
         if(port < 1024)		//evito le porte "Well-known" [0-1023]
         	port += 1024;
         serverSocket.socket().bind(new InetSocketAddress(port));
@@ -342,7 +344,7 @@ public class GUILoggedClass extends JFrame {
 		
 		Object[] struct = {
 				"Nome Documento:", docLabel,
-				"Sezione: (se > " + Configurations.MAX_SECTIONS + " -> doc completo):", secLabel
+				"Sezione: (" + Configurations.MAX_SECTIONS + " -> doc completo):", secLabel
 		};
 		
 		String res, docName = null;
@@ -350,7 +352,7 @@ public class GUILoggedClass extends JFrame {
 		
 		do {
 			try {
-				sections = 255;
+				sections = 256;
 				int option = JOptionPane.showConfirmDialog(null, struct, "Mostra [Sezione di] Documento", JOptionPane.OK_CANCEL_OPTION);
 				
 				if (option == JOptionPane.OK_OPTION) {
@@ -364,7 +366,7 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (docName == null || sections < 0 || sections > 255 || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
+		} while (docName == null || sections < 0 || sections > Configurations.MAX_SECTIONS || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
 		
 		outToServer.writeBytes("show" + '\n');				//richiesta
 		
@@ -430,7 +432,7 @@ public class GUILoggedClass extends JFrame {
 		
 		switch(res) {
 			case "SUCCESS":
-				if(sections <= Configurations.MAX_SECTIONS)
+				if(sections != Configurations.MAX_SECTIONS)
 					JOptionPane.showMessageDialog(null, "Sezione " + sections + " del documento " + docName + " scaricato nella tua cartella personale!", "Success", JOptionPane.OK_OPTION );
 				else	
 					JOptionPane.showMessageDialog(null, "Documento " + docName + " scaricato nella tua cartella personale!", "Success", JOptionPane.OK_OPTION );
@@ -475,8 +477,8 @@ public class GUILoggedClass extends JFrame {
 		do {
 			tmp = inFromServer.readLine();		//costruisco la stringa finale
 			
-				if(tmp.length() < 1) {			//Il server manda uno \n per ogni riga (classico writeBytes) ed alla fine 
-					check++;					//un ulteriore \n, contandoli so quando ho finito i documenti
+			if(tmp.length() < 1) {			//Il server manda uno \n per ogni riga (classico writeBytes) ed alla fine 
+				check++;					//un ulteriore \n, contandoli so quando ho finito i documenti
 				res = res + '\n';
 			}
 			else {
@@ -486,7 +488,7 @@ public class GUILoggedClass extends JFrame {
 				else
 					res = res + tmp + '\n';
 			}
-		} while(check < 2);
+		} while(check < 2 && !tmp.equals("Nessun documento."));
 
 		if(res != null) 
 			tmp = "SUCCESS";
@@ -532,7 +534,7 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				section = -1;
 			}
-		} while (docName == null || section < 0 || section > Configurations.MAX_LENGTH || !docName.matches(Configurations.VALID_CHARACTERS));		//prendi inputs corretti || stop
+		} while (docName == null || section < 0 || section >= Configurations.MAX_SECTIONS || !docName.matches(Configurations.VALID_CHARACTERS));		//prendi inputs corretti || stop
 
 		outToServer.writeBytes("editDoc" + '\n');				//richiesta
 		

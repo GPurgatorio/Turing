@@ -177,7 +177,6 @@ public class RequestHandler implements Runnable {
 					
 					username = inFromClient.readLine();
 					String res = Turing.getDocs(username);
-					
 					outToClient.writeBytes(res + '\n');
 				}
 				
@@ -188,23 +187,43 @@ public class RequestHandler implements Runnable {
 					int section = inFromClient.read();
 					int res = 2;
 					
-					int c = Turing.checkFile(username, docName, section);
 					String check = null;
+					int c = 0;
 					
-					if(c == -1) 
-						check = "NO_EXIST";
-					if(c == -2)
-						check = "HACKER";
-					if(c == -3)
-						check = "UNABLE";
-					if(c == -4)
-						check = "UNABLEU";
-					if(c == -5)
-						check = "OOB";
-					else
-						check = "SUCCESS";
+					if(section == Configurations.MAX_SECTIONS) {			//documento intero 
+						if(Turing.checkPermissions(username, docName)) {
+							System.err.println("NOOO");
+							check = "SUCCESS";
+							outToClient.writeBytes(check + '\n');
+						}
+						else {
+							System.err.println("Sì");
+							check = "UNABLE";
+							outToClient.writeBytes(check + '\n');
+						}
+					}
 					
-					outToClient.writeBytes(check + '\n');
+					else {												//section <> Config.MAX_SECTIONS
+						c = Turing.checkFile(username, docName, section);
+						
+						if(c == -1) 
+							check = "NO_EXIST";
+						else if(c == -2)
+							check = "HACKER";
+						else if(c == -3) 
+							check = "UNABLE";
+						else if(c == -4)
+							check = "UNABLEU";
+						else if(c == -5)
+							check = "OOB";								//section > #files
+						else
+							check = "SUCCESS";							//section < #files
+						
+						System.err.println(check);
+						
+						outToClient.writeBytes(check + '\n');
+					}
+
 					
 					if(check.equals("SUCCESS")) {
 	
@@ -245,6 +264,8 @@ public class RequestHandler implements Runnable {
 	private SocketChannel createChannel() throws IOException {
 		SocketChannel socketChannel = SocketChannel.open();
 		int port = nameServed.hashCode() % 65535;
+        if(port < 0) 
+        	port = -port % 65535;
         if(port < 1024)		//evito le porte "Well-known" [0-1023]
         	port += 1024;
         SocketAddress socketAddr = new InetSocketAddress("localhost", port);
