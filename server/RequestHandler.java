@@ -132,14 +132,12 @@ public class RequestHandler implements Runnable {
 					
 					int c = Turing.checkFile(username, docName, section);
 					
-					System.err.println(c);
-					
-					if(c == -5) 
+					if(c == -5) 		//non serve gestire gli altri casi
 						outToClient.writeBytes("OOB" + '\n');
 					
 					else {
-						if(c < 0)
-							System.err.println("c è < 0 be careful");
+						if(c < 0 && Configurations.DEBUG)
+							System.err.println("c è < 0, torna?");
 						
 						outToClient.writeBytes("ok" + '\n');
 						String res = Turing.editDoc(username, docName, section, clientChannel);
@@ -192,12 +190,10 @@ public class RequestHandler implements Runnable {
 					
 					if(section == Configurations.MAX_SECTIONS) {			//documento intero 
 						if(Turing.checkPermissions(username, docName)) {
-							System.err.println("NOOO");
 							check = "SUCCESS";
 							outToClient.writeBytes(check + '\n');
 						}
 						else {
-							System.err.println("Sì");
 							check = "UNABLE";
 							outToClient.writeBytes(check + '\n');
 						}
@@ -218,8 +214,6 @@ public class RequestHandler implements Runnable {
 							check = "OOB";								//section > #files
 						else
 							check = "SUCCESS";							//section < #files
-						
-						System.err.println(check);
 						
 						outToClient.writeBytes(check + '\n');
 					}
@@ -244,6 +238,9 @@ public class RequestHandler implements Runnable {
 						else
 							outToClient.writeBytes("ERROR" + '\n');
 					}
+				}
+				else {
+					System.err.println("Comando non riconosciuto: ->" + command);
 				}
 					
 			}

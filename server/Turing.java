@@ -93,7 +93,8 @@ public class Turing {
 			connectionSocket = null;
 			connectionSocket = welcomeSocket.accept();
 			
-			System.out.println("Server: Un client si è connesso.");
+			if(Configurations.DEBUG)
+				System.out.println("Server: Un client si è connesso.");
 			e.execute(new RequestHandler(connectionSocket));
 		}
 	}
@@ -110,17 +111,20 @@ public class Turing {
 			if(usersOffline.contains(username) && database.get(username).checkPassword(password)) {
 				usersOffline.remove(username);
 				usersOnline.add(username);
-				System.out.println("Utente " + username + " si è connesso.");
+				
+				if(Configurations.DEBUG)
+					System.out.println("Utente " + username + " si è connesso.");
 				return 0;
 			}
 			
 			if(usersOnline.contains(username)) {
-				System.err.println("Utente " + username + " ha tentato un doppio login.");
+				if(Configurations.DEBUG)
+					System.err.println("Utente " + username + " ha tentato un doppio login.");
 				return -1;
 			}
 		}
-		
-		System.err.println("Tentativo di login con credenziali errate.");
+		if(Configurations.DEBUG)
+			System.err.println("Tentativo di login con credenziali errate.");
 		return -2;
 	}
 	
@@ -167,7 +171,8 @@ public class Turing {
 			if(usersOnline.contains(username)) {
 				usersOnline.remove(username);
 				usersOffline.add(username);
-				System.out.println("Utente " + username + " si è disconnesso.");
+				if(Configurations.DEBUG)
+					System.out.println("Utente " + username + " si è disconnesso.");
 				return true;
 			}
 		}
@@ -179,12 +184,14 @@ public class Turing {
 		
 		synchronized(updateDB) {
 			if(docs.containsKey(docName)) {
-				System.err.println(creator + " ha tentato di creare un duplicato di " + docName);
+				if(Configurations.DEBUG)
+					System.err.println(creator + " ha tentato di creare un duplicato di " + docName);
 				return -1;
 			}
 			
 			if (!database.containsKey(creator)) {
-				System.err.println(creator + " utente sconosciuto (?)");
+				if(Configurations.DEBUG)
+					System.err.println(creator + " utente sconosciuto (?)");
 				return -2;
 			}
 			
@@ -217,8 +224,8 @@ public class Turing {
 				x.createNewFile();
 			} catch (IOException e) { e.printStackTrace(); }
 		}
-		
-		System.out.println(creator + " ha creato il documento " + docName + " con " + sections + " sezioni.");
+		if(Configurations.DEBUG)
+			System.out.println(creator + " ha creato il documento " + docName + " con " + sections + " sezioni.");
 		return 0;
 	}
 	
@@ -230,27 +237,32 @@ public class Turing {
 			
 			// se il mittente non è registrato
 			if(!checkAll(sender)) {
-				System.err.println(sender + " non registrato.");
+				if(Configurations.DEBUG)
+					System.err.println(sender + " non registrato.");
 				return -1;
 			}
 			// se il destinatario non è registrato
 			if(!checkAll(receiver)) {
-				System.err.println(receiver + " non registrato.");
+				if(Configurations.DEBUG)
+					System.err.println(receiver + " non registrato.");
 				return -2;
 			}
 			// se il documento non esiste
 			if(!docs.containsKey(docName)) {
-				System.err.println(docName + " non è un documento esistente.");
+				if(Configurations.DEBUG)
+					System.err.println(docName + " non è un documento esistente.");
 				return -3;
 			}
 			// se il mittente non ha creato il documento
 			if(!docs.get(docName).isCreator(sender)) {
-				System.err.println(sender + " non può invitare al documento " + docName + " in quanto non è creatore.");
+				if(Configurations.DEBUG)
+					System.err.println(sender + " non può invitare al documento " + docName + " in quanto non è creatore.");
 				return -4;
 			}
 			// se il destinatario è già editor
 			if(database.get(receiver).isEditor(docName)) {
-				System.err.println(receiver + " è già editor di " + docName);
+				if(Configurations.DEBUG)
+					System.err.println(receiver + " è già editor di " + docName);
 				return -5;
 			}
 			
@@ -258,14 +270,16 @@ public class Turing {
 				docs.get(docName).addEditor(receiver);
 				rec.addInstaInvites(docName);
 				rec.addToEditableDocs(docName);
-				System.out.println(sender + " ha invitato (live)  " + receiver + " come editor del documento " + docName);
+				if(Configurations.DEBUG)
+					System.out.println(sender + " ha invitato (live)  " + receiver + " come editor del documento " + docName);
 			}
 			
 			else {										//l'utente è offline, salvo
 				docs.get(docName).addEditor(receiver);
 				rec.addPendingInvite(docName);
 				rec.addToEditableDocs(docName);
-				System.out.println(sender + " ha invitato (pending) " + receiver + " come editor del documento " + docName);
+				if(Configurations.DEBUG)
+					System.out.println(sender + " ha invitato (pending) " + receiver + " come editor del documento " + docName);
 			}
 		}
 		return 0;
@@ -310,24 +324,27 @@ public class Turing {
 			d = docs.get(docName);
 			
 			if(database.get(username) == null || d == null) {
-				System.err.println("User non esistente || Documento inesistente");
+				if(Configurations.DEBUG)
+					System.err.println("User non esistente || Documento inesistente");
 				return "NULL";
 			}
 			
 			if(!d.isCreator(username) && !d.isEditor(username)) {
-				System.err.println(username + " non può modificare questo documento.");
+				if(Configurations.DEBUG)
+					System.err.println(username + " non può modificare questo documento.");
 				return "UNABLE";
 			}
 			
 			if(d.isLocked(section)) {
-				System.err.println("Qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
+				if(Configurations.DEBUG)
+					System.err.println("Qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
 				return "LOCK";
 			}
 			
 			if(!d.editSection(section))
 				return "TRYLOCK";
 			
-			if(d.locks.size() <= section)
+			if(d.getSize() <= section)
 				return "OOB";
 			
 			FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
@@ -349,8 +366,8 @@ public class Turing {
 			inChannel.close(); 
 			res = d.getAddr().toString();
 		}
-		
-		System.out.println(username + " sta ora modificando la sezione " + section + " di " + docName);
+		if(Configurations.DEBUG)
+			System.out.println(username + " sta ora modificando la sezione " + section + " di " + docName);
 		
 		res = (String) res.subSequence(1, res.length());			//l'indirizzo ha uno / iniziale, lo tolgo
 		return res;
@@ -429,7 +446,7 @@ public class Turing {
 				return -1;
 			
 			Document d = docs.get(docName);
-			for(int i = 0; i < d.locks.size(); i++) {
+			for(int i = 0; i < d.getSize(); i++) {
 				if(d.isLocked(i)) {
 					res = 1;
 					break;
@@ -438,7 +455,7 @@ public class Turing {
 			
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			
-			for(int i = 0; i < d.locks.size(); i++) {
+			for(int i = 0; i < d.getSize(); i++) {
 				
 				FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + i + ".txt"), StandardOpenOption.READ);
 				boolean stop = false;
@@ -460,16 +477,16 @@ public class Turing {
 		return res;
 	}
 
-	public static void unlock(String nameServed, String docServed, int sectionDoc) {
+	static void unlock(String nameServed, String docServed, int sectionDoc) {
 
 		synchronized(updateDB) {
 			Document d = docs.get(docServed);
-			d.locks.get(sectionDoc).unlock();
+			d.unlockSection(sectionDoc);
 		}
 		
 	}
 
-	public static int checkFile(String username, String docName, int section) {
+	static int checkFile(String username, String docName, int section) {
 		
 		Document d = null;
 		User u = null;
@@ -491,13 +508,13 @@ public class Turing {
 		if(!u.isEditor(docName))
 			return -4;
 		
-		if(section >= d.locks.size() && section <= Configurations.MAX_SECTIONS)
+		if(section >= d.getSize() && section <= Configurations.MAX_SECTIONS)
 			return -5;
 		
-		return d.locks.size();
+		return d.getSize();
 	}
 
-	public static boolean checkPermissions(String username, String docName) {
+	static boolean checkPermissions(String username, String docName) {
 		synchronized(updateDB) {
 			User u = database.get(username);
 			Document d = docs.get(docName);

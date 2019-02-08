@@ -262,7 +262,7 @@ public class GUILoggedClass extends JFrame {
 				JOptionPane.showMessageDialog(null, "Documento " + docName + " creato con successo!");
 				break;
 			case "DOC_EXISTS":
-				JOptionPane.showMessageDialog(null, "Un documento con nome " + docName + " risulta già presente. Cambia nome!");
+				JOptionPane.showMessageDialog(null, "Un documento con nome " + docName + " risulta già presente. Cambia nome!", "Error", JOptionPane.ERROR_MESSAGE);
 				break;
 			case "HACKER":
 				JOptionPane.showMessageDialog(null, "Non risulti essere registrato.");
@@ -424,8 +424,8 @@ public class GUILoggedClass extends JFrame {
 	        
 			clientChannel = null;
 			clientChannel = acceptServerSocket();
-			
-	        System.err.println("Received File Successfully!");
+			if(Configurations.DEBUG)
+				System.out.println("Received File Successfully!");
 			
 			res = inFromServer.readLine();						//risultato richiesta
 		}
@@ -637,11 +637,11 @@ public class GUILoggedClass extends JFrame {
 		if(!res.equals("ERROR")) {
 			username = "";
 			l.disable();
-			this.dispose();
 			GUIClass w = new GUIClass(clientSocket, clientChannel, serverSocket);			//torno alla schermata di login/register (connessione persistente)
 			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
+			this.dispose();
 		}
 		else if(Configurations.DEBUG)
 			JOptionPane.showMessageDialog(null, "Non risulti offline (?).");

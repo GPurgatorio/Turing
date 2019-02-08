@@ -1,5 +1,6 @@
 package client;
 
+//import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -28,8 +29,9 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JScrollPane;
+//import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+//import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 
 import server.Configurations;
@@ -44,7 +46,7 @@ public class GUIEditClass extends JFrame {
 	private JButton sendMsgButton, endEditButton;
 	private JLabel userLabel;
 	private JTextArea chatArea, msgArea; 
-	private JScrollPane scrollPane; 
+	//private JScrollPane scrollPane; 
 	private Image endEditImg, sendMsgImg;
 	private DataOutputStream outToServer; 
 	private BufferedReader inFromServer;
@@ -72,7 +74,7 @@ public class GUIEditClass extends JFrame {
 		chatSocket = new MulticastSocket(Configurations.MULTICAST_PORT);
 		group = InetAddress.getByName(addr);
 		
-		chatArea = new JTextArea();
+		chatArea = new JTextArea(320,240);
 		chatArea.setEditable(false);
 		chatArea.setLineWrap(true);
 		chatArea.setWrapStyleWord(true);
@@ -80,8 +82,15 @@ public class GUIEditClass extends JFrame {
 		msgArea.setEditable(true);
 		msgArea.setLineWrap(true);
 		msgArea.setWrapStyleWord(true);
+		/* con setLayout(null) sembra essere impossibile
 		scrollPane = new JScrollPane(chatArea);
-		scrollPane.setVisible(true);
+		scrollPane.setPreferredSize(new Dimension(330,250));
+		scrollPane.setAlignmentX(35);
+		scrollPane.setAlignmentY(40);
+		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
+		add(scrollPane);
+		*/
 		
 		c = new Chat(username, chatArea, chatSocket, group);
 		c.start();
@@ -145,7 +154,7 @@ public class GUIEditClass extends JFrame {
 				if(e.getKeyCode() == KeyEvent.VK_ENTER) {
 				      try {
 						sendMsg();
-					} catch (IOException e1) { e1.printStackTrace(); }
+				      } catch (IOException e1) { e1.printStackTrace(); }
 				}
             }
             
@@ -191,7 +200,8 @@ public class GUIEditClass extends JFrame {
 	}
 
 	protected void disconnect() throws IOException {
-		System.err.println("Disconnect");
+		if(Configurations.DEBUG)
+			System.err.println("Disconnect");
 		String finalMsg = username + " si è disconnesso.\n";
 		byte[] m = finalMsg.getBytes();
 		DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
@@ -230,13 +240,14 @@ public class GUIEditClass extends JFrame {
 		clientChannel = null;
 		
 		if(res.equals("SUCCESS")) {
-			System.err.println("Fine Edit, torno in Logged");
+			if(Configurations.DEBUG)
+				System.out.println("Fine Edit, torno in Logged");
 			c.disable();
-			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, username, "edit");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
+			this.dispose();
 		}
 	}
 }

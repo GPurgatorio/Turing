@@ -17,7 +17,7 @@ public class RegistrationRMI implements RegistrationInterface {
 	}
 	
 	@Override
-	public boolean registerRequest(String username, String password) throws RemoteException {
+	public synchronized boolean registerRequest(String username, String password) throws RemoteException {
 		
 		if(!usersOnline.contains(username) && !usersOffline.contains(username)) {
 			User u = new User(username, password);

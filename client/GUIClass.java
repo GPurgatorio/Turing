@@ -102,7 +102,7 @@ public class GUIClass extends JFrame {
 	        logo.setBounds(120, 5, 300, 270);
 	        add(logo);
 		}
-		catch (IOException e) {	System.err.println("Logo non trovato."); }
+		catch (IOException e) {	if(Configurations.DEBUG) System.err.println("Logo non trovato."); }
 		
 		userField = new JTextField();
 		passField = new JPasswordField();
@@ -239,11 +239,11 @@ public class GUIClass extends JFrame {
         String res = inFromServer.readLine();
 		
 		if(res.equals("SUCCESS")) {
-			this.dispose();
 			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, inpUser, "login");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
+			this.dispose();
 		}
 		
 		else if(res.equals("UNKNWN_USR"))

@@ -40,7 +40,7 @@ public class PendingInviteHandler implements Runnable {
 						pendOTC.writeBytes(it.next() + '\n');
 				}
 				Turing.resetInstaInvites(nameServed);
-			} catch(SocketException e) { running = false; }
+			} catch(SocketException e) { running = false; }				//pendClientSocket.close();
 			catch (IOException e1) { e1.printStackTrace(); }
 		}
 	}

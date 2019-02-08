@@ -8,10 +8,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Document {
 	
-	private String creator;
 	private String docName;
-	protected List<ReentrantLock> locks;
+	private String creator;
 	private List<String> editors;
+	private List<ReentrantLock> locks;
 	private InetAddress multicastAddr;
 	
 	public Document(String creator, String docName, int n, InetAddress randAddr) {
@@ -25,43 +25,47 @@ public class Document {
 			locks.set(i, new ReentrantLock(true));					//lock con fairness
 	}
 	
-	public String getName() {
+	public synchronized String getName() {
 		return this.docName;
 	}
 	
-	public String getCreator() {
+	public synchronized String getCreator() {
 		return this.creator;
 	}
+	
+	public synchronized int getSize() {
+		return this.locks.size();
+	}
 
-	public void addEditor(String receiver) {
+	public synchronized void addEditor(String receiver) {
 		this.editors.add(receiver);
 	}
 
-	public boolean isCreator(String username){
+	public synchronized boolean isCreator(String username){
 		return this.creator.equals(username);
 	}
 	
-	public boolean isEditor(String receiver) {
+	public synchronized boolean isEditor(String receiver) {
 		return (this.editors.contains(receiver) || this.creator.equals(receiver));
 	}
 	
-	public boolean isLocked(int section) {
+	public synchronized boolean isLocked(int section) {
 		return locks.get(section).isLocked();
 	}
 	
-	public InetAddress getAddr() {
+	public synchronized InetAddress getAddr() {
 		return this.multicastAddr;
 	}
 	
-	public boolean editSection(int section) {
+	public synchronized boolean editSection(int section) {
 		return locks.get(section).tryLock();
 	}
 	
-	public void unlockSection(int section) {
+	public synchronized void unlockSection(int section) {
 		locks.get(section).unlock();
 	}
 
-	public String getEditors() {
+	public synchronized String getEditors() {
 		String res = null;
 		
 		for(int i = 0; i < editors.size(); i++) {

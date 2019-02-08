@@ -19,47 +19,47 @@ public class User {
 		this.instaInvites = new HashSet<String>();
 	}
 	
-	public String getUser() {
+	public synchronized String getUser() {
 		return this.username;
 	}
 	
-	public Set<String> getDocs(){
+	public synchronized Set<String> getDocs(){
 		return this.userDocs;
 	}
 	
-	public void addToEditableDocs(String docName) {
+	public synchronized void addToEditableDocs(String docName) {		
 		this.userDocs.add(docName);
 	}
 	
-	public boolean isEditor(String docName) {
+	public synchronized boolean isEditor(String docName) {
 		return this.userDocs.contains(docName);
 	}
 	
-	public boolean checkPassword(String pwd) {		//just to remove the "password" not used warning eheh
+	public synchronized boolean checkPassword(String pwd) {		//just to remove the "password" not used warning eheh
 		return this.password.equals(pwd);
 	}
 
-	public void addPendingInvite(String docName) {
+	public synchronized void addPendingInvite(String docName) {					
 		this.pendingInvites.add(docName);
 	}
 	
-	public Set<String> getPendingInvites() {
+	public synchronized Set<String> getPendingInvites() {
 		return this.pendingInvites;
 	}
 	
-	public void resetPendingInvites() {
+	public synchronized void resetPendingInvites() {
 		this.pendingInvites.clear();
 	}
 
-	public void addInstaInvites(String docName) {
+	public synchronized void addInstaInvites(String docName) {
 		this.instaInvites.add(docName);
 	}
 	
-	public Set<String> getInstaInvites() {
+	public synchronized Set<String> getInstaInvites() {
 		return this.instaInvites;
 	}
 	
-	public void resetInstaInvites() {
+	public synchronized void resetInstaInvites() {
 		this.instaInvites.clear();
 	}
 }
