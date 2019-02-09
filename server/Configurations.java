@@ -24,6 +24,7 @@ public class Configurations {
 	//Miscellaneous
 	public static final int THREADPOOL_EX_THREADS = 10;		//numero threads
 	public static final int MAX_LENGTH = 25;				//massima lunghezza di un campo di input (Username, Document, Password)
+	public static final boolean BORED_INIT = true;
 	
 	//Debug
 	public static final boolean DEBUG = true;				//mostra alcune stampe per il controllo del flusso

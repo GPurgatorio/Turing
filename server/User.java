@@ -35,7 +35,7 @@ public class User {
 		return this.userDocs.contains(docName);
 	}
 	
-	public synchronized boolean checkPassword(String pwd) {		//just to remove the "password" not used warning eheh
+	public synchronized boolean checkPassword(String pwd) {		
 		return this.password.equals(pwd);
 	}
 

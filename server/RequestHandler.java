@@ -70,8 +70,10 @@ public class RequestHandler implements Runnable {
 					username = inFromClient.readLine();
 					answer = "ERROR" + '\n';
 
-					if(Turing.disconnect(username)) 
+					if(Turing.disconnect(username)) {
+						nameServed = "";
 						answer = "SUCCESS" + '\n';
+					}
 					
 					outToClient.writeBytes(answer);
 				}
@@ -127,8 +129,6 @@ public class RequestHandler implements Runnable {
 					username = inFromClient.readLine();
 					docName = inFromClient.readLine();
 					int section = inFromClient.read();
-					docServed = docName;
-					sectionDoc = section;
 					
 					int c = Turing.checkFile(username, docName, section);
 					
@@ -137,7 +137,7 @@ public class RequestHandler implements Runnable {
 					
 					else {
 						if(c < 0 && Configurations.DEBUG)
-							System.err.println("c è < 0, torna?");
+							System.err.println("c è < 0, controlla se output torna");
 						
 						outToClient.writeBytes("ok" + '\n');
 						String res = Turing.editDoc(username, docName, section, clientChannel);
@@ -147,6 +147,8 @@ public class RequestHandler implements Runnable {
 						
 						else {
 							outToClient.writeBytes(res + '\n');		//success
+							docServed = docName;
+							sectionDoc = section;
 							
 							clientChannel = null;
 							clientChannel = createChannel();
@@ -189,14 +191,12 @@ public class RequestHandler implements Runnable {
 					int c = 0;
 					
 					if(section == Configurations.MAX_SECTIONS) {			//documento intero 
-						if(Turing.checkPermissions(username, docName)) {
+						if(Turing.checkPermissions(username, docName)) 
 							check = "SUCCESS";
-							outToClient.writeBytes(check + '\n');
-						}
-						else {
+						else 
 							check = "UNABLE";
-							outToClient.writeBytes(check + '\n');
-						}
+						
+						outToClient.writeBytes(check + '\n');
 					}
 					
 					else {												//section <> Config.MAX_SECTIONS
@@ -221,10 +221,16 @@ public class RequestHandler implements Runnable {
 					
 					if(check.equals("SUCCESS")) {
 	
-						if(section < c) 
+						if(section < c) {
 							res = Turing.getFile(username, docName, section, clientChannel);
-						else
+							if(Configurations.DEBUG)
+								System.out.println(username + " scarica la sezione " + section + " del file " + docName);
+						}
+						else {
 							res = Turing.getDocument(username, docName, clientChannel);
+							if(Configurations.DEBUG)
+								System.out.println(username + " scarica la versione intera del file " + docName);
+						}
 						
 						clientChannel = null;
 						clientChannel = createChannel();
@@ -247,7 +253,8 @@ public class RequestHandler implements Runnable {
 			catch (Exception e) {
 				try {
 					clientSocket.close();
-					Turing.disconnect(nameServed);
+					if(!nameServed.equals(""))
+						Turing.disconnect(nameServed);
 					if(sectionDoc != -1) 			//unlock in caso di crash
 						Turing.unlock(nameServed, docServed, sectionDoc);
 					flag = false;

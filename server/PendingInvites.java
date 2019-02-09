@@ -20,7 +20,6 @@ public class PendingInvites extends Thread {
 	
 	public void run() {
 		
-		System.out.println("Server di supporto per inviti attivato");
 		while(true) {
 			Socket pendConnectionSocket;
 			
@@ -29,7 +28,8 @@ public class PendingInvites extends Thread {
 					pendConnectionSocket = null;
 					pendConnectionSocket = pendWelcomeSocket.accept();
 					
-					//System.out.println("Un client è ora connesso per gli inviti in diretta.");
+					if(Configurations.DEBUG)
+						System.out.println("PendingInvites: un client ha richiesto il servizio di Live Invite.");
 					pend_e.execute(new PendingInviteHandler(pendConnectionSocket));
 					
 				} catch (IOException e) { e.printStackTrace(); }

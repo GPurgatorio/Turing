@@ -32,6 +32,13 @@ public class PendingInviteHandler implements Runnable {
 		boolean running = true;
 		
 		while(running) {
+			
+			if(!Turing.isOnline(nameServed)) {
+				running = false;
+				if(Configurations.DEBUG)
+					System.err.println("PendingInviteHandler di " + nameServed + ", è andato offline!");
+				break;
+			}
 			try {
 				Set<String> tmp = Turing.getInstaInvites(nameServed);
 				if(!tmp.isEmpty()) {
@@ -43,5 +50,9 @@ public class PendingInviteHandler implements Runnable {
 			} catch(SocketException e) { running = false; }				//pendClientSocket.close();
 			catch (IOException e1) { e1.printStackTrace(); }
 		}
+		
+		try {
+			pendClientSocket.close();
+		} catch (IOException e) { e.printStackTrace(); }
 	}
 }

@@ -59,6 +59,9 @@ public class Turing {
 	}
 	
 	private static void boredInit() throws UnknownHostException {
+		
+		System.err.println("Nomi, docs ed invite di default attivi. Per disattivare, in Configurations.java, BORED_INIT = false.");
+		
 		User asd = new User("asd", "asd");
 		User jkl = new User("jkl", "jkl");
 		User iop = new User("iop", "iop");
@@ -82,12 +85,15 @@ public class Turing {
 		
 		init();
 		
-		boredInit();
+		if(Configurations.BORED_INIT)
+			boredInit();
 		
 		PendingInvites p = new PendingInvites();
 		p.start();
 		
 		Socket connectionSocket;
+		
+		System.out.println("*** Turing è operativo! ***");
 		
 		while (true) {							//turing diventa il listener
 			connectionSocket = null;
@@ -99,9 +105,7 @@ public class Turing {
 		}
 	}
 	
-
-	private static boolean checkAll(String username) {
-		//controlla se esiste un utente di nome username
+	private static boolean checkAll(String username) {  		//controlla se esiste un utente di nome username
 		return (usersOnline.contains(username) || usersOffline.contains(username));
 	}
 	
@@ -140,6 +144,9 @@ public class Turing {
 				return tmp;
 			}
 			
+			if(Configurations.DEBUG)
+				System.out.println("Turing: " + u.getUser() + " ha richiesto i suoi inviti mentre era offline.");
+			
 			return u.getPendingInvites();
 		}
 	}
@@ -176,6 +183,9 @@ public class Turing {
 				return true;
 			}
 		}
+		
+		if(Configurations.DEBUG)
+			System.err.println("È arrivata una richiesta di disconnect di " + username + " che non ha avuto alcun effetto.");
 
 		return false;
 	}
@@ -307,7 +317,7 @@ public class Turing {
 					res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
 				else
 					res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
-				res = res + '\n';		//per dare spazio tra info di un doc ed un altro
+				res = res + '\n';				//per dare spazio tra info di un doc ed un altro
 			}
 		}
 		if(antiBug != 0)
@@ -325,19 +335,19 @@ public class Turing {
 			
 			if(database.get(username) == null || d == null) {
 				if(Configurations.DEBUG)
-					System.err.println("User non esistente || Documento inesistente");
+					System.err.println("Turing [EditRequest]: User non esistente || Documento inesistente");
 				return "NULL";
 			}
 			
 			if(!d.isCreator(username) && !d.isEditor(username)) {
 				if(Configurations.DEBUG)
-					System.err.println(username + " non può modificare questo documento.");
+					System.err.println("Turing [EditRequest]:" + username + " non può modificare questo documento.");
 				return "UNABLE";
 			}
 			
 			if(d.isLocked(section)) {
 				if(Configurations.DEBUG)
-					System.err.println("Qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
+					System.err.println("Turing [EditRequest]: qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
 				return "LOCK";
 			}
 			
@@ -354,9 +364,9 @@ public class Turing {
 			
 			while (!stop) { 
 				int bytesRead=inChannel.read(buffer);
-				if (bytesRead==-1) {
+				if (bytesRead==-1) 
 					stop=true;
-				}
+				
 				buffer.flip();
 				while (buffer.hasRemaining())
 					clientChannel.write(buffer);
@@ -390,9 +400,9 @@ public class Turing {
 			
 			while (!stop) { 
 				int bytesRead=clientChannel.read(buffer);
-				if (bytesRead==-1) {
+				if (bytesRead==-1) 
 					stop=true;
-				}
+
 				buffer.flip();
 				while (buffer.hasRemaining())
 					outChannel.write(buffer);
@@ -423,9 +433,9 @@ public class Turing {
 			
 			while (!stop) { 
 				int bytesRead=inChannel.read(buffer);
-				if (bytesRead==-1) {
+				if (bytesRead==-1) 
 					stop=true;
-				}
+
 				buffer.flip();
 				while (buffer.hasRemaining())
 					clientChannel.write(buffer);
@@ -462,9 +472,9 @@ public class Turing {
 				
 				while (!stop) { 
 					int bytesRead=inChannel.read(buffer);
-					if (bytesRead==-1) {
+					if (bytesRead==-1) 
 						stop=true;
-					}
+
 					buffer.flip();
 					while (buffer.hasRemaining())
 						clientChannel.write(buffer);
@@ -529,5 +539,9 @@ public class Turing {
 				return false;
 		}
 		return true;
+	}
+
+	static boolean isOnline(String nameServed) {
+		return usersOnline.contains(nameServed);
 	}
 }

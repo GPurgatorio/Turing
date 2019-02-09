@@ -45,6 +45,9 @@ public class GUILoggedClass extends JFrame {
 	
 	public GUILoggedClass(Socket s, SocketChannel c, ServerSocketChannel ssc, String usr, String fromWhat) throws IOException {
 
+		if(Configurations.DEBUG)
+			System.out.println("Inizializzazione LoggedGUI");
+		
 		clientSocket = s;
 		clientChannel = c;
 		serverSocket = ssc;
@@ -100,6 +103,9 @@ public class GUILoggedClass extends JFrame {
 		
 		l = new NotSoGUIListener(pendSocket, username);
 		l.start();
+		
+		if(Configurations.DEBUG)
+			System.out.println("Invite Live Listener attivo");
 	}
 
 	//Funzione che controlla se l'utente è stato invitato a qualche documento mentre era offline
@@ -389,7 +395,7 @@ public class GUILoggedClass extends JFrame {
 			if(!dir.exists())
 				dir.mkdir();
 			
-			if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+			if(sections >= 0 && sections < Configurations.MAX_SECTIONS)		
 				x = new File("Downloads/" + username, docName + sections + ".txt");
 			else
 				x = new File("Downloads/" + username, docName + "_COMPLETE.txt");
@@ -400,7 +406,7 @@ public class GUILoggedClass extends JFrame {
 			
 			FileChannel outChannel;
 			
-			if(sections > 0 && sections <= Configurations.MAX_SECTIONS)		//cambia, dipende dal doc non dalle config
+			if(sections > 0 && sections < Configurations.MAX_SECTIONS)		//se è arrivato qua il file esiste, quindi è <= #sezioni e perciò ovviamente <= MaxSections
 				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + sections + ".txt"),	StandardOpenOption.WRITE);
 			else
 				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
@@ -424,6 +430,7 @@ public class GUILoggedClass extends JFrame {
 	        
 			clientChannel = null;
 			clientChannel = acceptServerSocket();
+			
 			if(Configurations.DEBUG)
 				System.out.println("Received File Successfully!");
 			
@@ -597,12 +604,12 @@ public class GUILoggedClass extends JFrame {
 		
 		switch(res) {
 			case "SUCCESS":
-				this.dispose();		//passo alla modalità Editing
 				GUIEditClass w = new GUIEditClass(clientSocket, clientChannel, serverSocket, username, tmp, docName, section);
 				username = "";
 				w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);
 				w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 				w.setVisible(true);
+				this.dispose();		//passo alla modalità Editing
 				break;
 			case "ERROR":
 				if(tmp.equals("NULL"))
@@ -615,6 +622,7 @@ public class GUILoggedClass extends JFrame {
 					JOptionPane.showMessageDialog(null, "TryLock ha fallito.", "TryLock", JOptionPane.ERROR_MESSAGE);
 				else if(tmp.equals("OOB"))
 					JOptionPane.showMessageDialog(null, "Fuori dal numero di sezioni", "Out of Bounds", JOptionPane.ERROR_MESSAGE);
+				break;
 			default:
 				JOptionPane.showMessageDialog(null, "Errore generico.");
 				if(Configurations.DEBUG)

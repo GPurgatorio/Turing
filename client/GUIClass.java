@@ -244,6 +244,8 @@ public class GUIClass extends JFrame {
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
 			this.dispose();
+			if(Configurations.DEBUG)
+				System.out.println("GUIClass: fine, passo in Logged");
 		}
 		
 		else if(res.equals("UNKNWN_USR"))

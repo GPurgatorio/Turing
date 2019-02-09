@@ -5,10 +5,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 
 import javax.swing.JOptionPane;
+
+import server.Configurations;
 
 public class NotSoGUIListener extends Thread {
 
@@ -33,20 +33,25 @@ public class NotSoGUIListener extends Thread {
 		
 		try {
 			pendOTS.writeBytes(username + '\n');
-		} catch (IOException e1) { e1.printStackTrace(); }
+		} catch (IOException e) { e.printStackTrace(); }
+		
+		if(Configurations.DEBUG)
+			System.out.println("Live Invite Listener [" + username + "]: attivato!");
 		
 		do {
 			try {
 				String instaInvite = pendIFS.readLine();
 				if(instaInvite != null && instaInvite.length() > 0)
 					JOptionPane.showMessageDialog(null, "Sei appena stato invitato al documento:\n " + instaInvite, "Live Invite", JOptionPane.INFORMATION_MESSAGE);
-			} catch (SocketException | SocketTimeoutException e) { ; } 
-			catch (IOException e1) {e1.printStackTrace();}
+			} catch (IOException e) { e.printStackTrace(); }
 		} while(running);
 		
 		try {
 			pendSocket.close();
 		} catch (IOException e) { e.printStackTrace(); }
+		
+		if(Configurations.DEBUG)
+			System.err.println("Live Invite Listener [" + username + "]: disattivato!");
 	}
 	
 	public void disable() {

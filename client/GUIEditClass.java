@@ -82,9 +82,11 @@ public class GUIEditClass extends JFrame {
 		msgArea.setEditable(true);
 		msgArea.setLineWrap(true);
 		msgArea.setWrapStyleWord(true);
-		/* con setLayout(null) sembra essere impossibile
+		/* 
+		 * con setLayout(null) sembra essere impossibile, essendo una cosa semplicemente grafica lascio perdere
+		 * 
 		scrollPane = new JScrollPane(chatArea);
-		scrollPane.setPreferredSize(new Dimension(330,250));
+		scrollPane.setPreferredSize(new Dimension(320,240));
 		scrollPane.setAlignmentX(35);
 		scrollPane.setAlignmentY(40);
 		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);

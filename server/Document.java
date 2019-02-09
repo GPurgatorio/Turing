@@ -66,8 +66,8 @@ public class Document {
 	}
 
 	public synchronized String getEditors() {
-		String res = null;
 		
+		String res = null;
 		for(int i = 0; i < editors.size(); i++) {
 			if (res == null)
 				res = editors.get(i);
