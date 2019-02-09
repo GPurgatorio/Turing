@@ -35,29 +35,31 @@ public class Turing {
 	
 	private static void init() throws UnknownHostException, IOException, AlreadyBoundException {
 		
-		updateDB = new Object();
-		updateSets = new Object();
+		updateDB = new Object();							// usato per la gestione sincronizzazione tra database e docs 
+		updateSets = new Object();							// usato per la gestione sincronizzazione tra usersOnline ed usersOffline
 		database = new ConcurrentHashMap<String, User>();	// <username, User>
 		docs = new ConcurrentHashMap<String, Document>();	// <docName, Document>
 		usersOnline = new HashSet<String>();
 		usersOffline = new HashSet<String>();
-		multicastAddresses = new HashSet<InetAddress>();
+		multicastAddresses = new HashSet<InetAddress>();	// indirizzi di multicast già assegnati a documenti esistenti
 		welcomeSocket  = new ServerSocket(Configurations.DEFAULT_PORT, 0, InetAddress.getByName(null));
 		
-		e = Executors.newFixedThreadPool(Configurations.THREADPOOL_EX_THREADS);
+		e = Executors.newFixedThreadPool(Configurations.THREADPOOL_EX_THREADS);		//vedasi relazione per piccolo commento a riguardo
 		
+		//classica RMI come abbiamo affrontato durante il corso
 		RegistrationRMI obj = new RegistrationRMI(database, usersOffline, usersOnline);
         RegistrationInterface stub = (RegistrationInterface) UnicastRemoteObject.exportObject(obj, 0);
 
         Registry registry = LocateRegistry.createRegistry(Configurations.REGISTRATION_PORT);
         registry.bind(RegistrationInterface.SERVICE_NAME, stub);
         
-        File dir = new File("Documents/");		//dove vengono salvati i documenti
+        File dir = new File("Documents/");		//dove vengono salvati i documenti (lato server)
         if(!dir.exists())
         	dir.mkdir();
 		
 	}
 	
+	//Semplice inizializzazione del database in modo da avere elementi su cui lavorare senza doverli ricreare ogni volta
 	private static void boredInit() throws UnknownHostException {
 		
 		System.err.println("Nomi, docs ed invite di default attivi. Per disattivare, in Configurations.java, BORED_INIT = false.");
@@ -76,6 +78,7 @@ public class Turing {
 		createDoc("asd", "qwe", 5);
 		createDoc("asd", "solodiasd", 3);
 		createDoc("asd", "qwertyuiop", 6);
+		
 		sendInvite("asd", "jkl", "qwe");
 		sendInvite("asd", "jkl", "qwertyuiop");
 		sendInvite("asd", "iop", "qwertyuiop");
@@ -85,17 +88,17 @@ public class Turing {
 		
 		init();
 		
-		if(Configurations.BORED_INIT)
+		if(Configurations.BORED_INIT)							//in caso si voglia testare eseguendo più volte, mette elementi di default
 			boredInit();
 		
-		PendingInvites p = new PendingInvites();
+		PendingInvites p = new PendingInvites();				//Listener di supporto per gli inviti live
 		p.start();
 		
 		Socket connectionSocket;
 		
-		System.out.println("*** Turing è operativo! ***");
+		System.out.println("*** Turing è operativo! ***");		//tutto è inizializzato correttamente, quindi..
 		
-		while (true) {							//turing diventa il listener
+		while (true) {											//.. Turing diventa il Listener
 			connectionSocket = null;
 			connectionSocket = welcomeSocket.accept();
 			
@@ -105,33 +108,39 @@ public class Turing {
 		}
 	}
 	
-	private static boolean checkAll(String username) {  		//controlla se esiste un utente di nome username
+	private static boolean checkAll(String username) {  		//controlla se esiste un utente di nome username nei Sets
 		return (usersOnline.contains(username) || usersOffline.contains(username));
 	}
 	
+	//		*** Richiesta di Login ***
 	static int login(String username, String password) {
 		
 		synchronized(updateSets) {
+			//se l'utente risulta tra gli utenti offline && la password è corretta
 			if(usersOffline.contains(username) && database.get(username).checkPassword(password)) {
-				usersOffline.remove(username);
-				usersOnline.add(username);
+				usersOffline.remove(username);	//rimuovi dal Set degli utenti offline
+				usersOnline.add(username);		//e metti nel Set degli utenti online
 				
 				if(Configurations.DEBUG)
 					System.out.println("Utente " + username + " si è connesso.");
 				return 0;
 			}
 			
+			//se è già connesso..
 			if(usersOnline.contains(username)) {
 				if(Configurations.DEBUG)
 					System.err.println("Utente " + username + " ha tentato un doppio login.");
 				return -1;
 			}
 		}
+		
+		//se arrivo qua, le credenziali non erano corrette
 		if(Configurations.DEBUG)
 			System.err.println("Tentativo di login con credenziali errate.");
 		return -2;
 	}
 	
+	// Richiesta degli inviti a cui si è stati invitati durante il periodo di permanenza offline
 	static Set<String> getPendingInvites(String username) {
 		
 		synchronized(updateDB) {
@@ -140,17 +149,18 @@ public class Turing {
 			
 			if(u == null) {
 				if(Configurations.DEBUG)
-					System.err.println("Ecchissei");
+					System.err.println("Turing, getPendInv: questa stampa dovrebbe essere impossibile.");
 				return tmp;
 			}
 			
 			if(Configurations.DEBUG)
-				System.out.println("Turing: " + u.getUser() + " ha richiesto i suoi inviti mentre era offline.");
+				System.out.println("Turing: " + u.getUser() + " ha richiesto i nomi dei documenti a cui è stato invitato mentre era offline.");
 			
 			return u.getPendingInvites();
 		}
 	}
 	
+	// Richiesta di un Set usato per la gestione degli inviti in diretta (live)
 	static Set<String> getInstaInvites(String nameServed) {
 		Set<String> tmp = null;
 		
@@ -164,20 +174,24 @@ public class Turing {
 		return tmp;
 	}
 	
+	//Una volta ottenuti gli inviti, non voglio che vengano mostrati nuovamente all'accesso successivo -> clear
 	static void resetInvites(String username) {
 		database.get(username).resetPendingInvites();
 	}
 
+	//Identico a resetInvites, semplicemente con un target diverso
 	static void resetInstaInvites(String username) {
 		database.get(username).resetInstaInvites();
 	}
 
+	//		*** Richiesta di logout ***
 	static boolean disconnect (String username) {
 		
 		synchronized(updateSets) {
-			if(usersOnline.contains(username)) {
-				usersOnline.remove(username);
-				usersOffline.add(username);
+			//se l'utente è online
+			if(usersOnline.contains(username)) {		
+				usersOnline.remove(username);		//lo rimuovo dal Set degli utenti online
+				usersOffline.add(username);			//per metterlo nel Set degli utenti offline
 				if(Configurations.DEBUG)
 					System.out.println("Utente " + username + " si è disconnesso.");
 				return true;
@@ -190,56 +204,65 @@ public class Turing {
 		return false;
 	}
 	
+	
+	//		*** Richiesta di Creazione Documento ***
 	static int createDoc(String creator, String docName, int sections) {
 		
 		synchronized(updateDB) {
+			//Se esiste un documento con lo stesso nome -> errore
 			if(docs.containsKey(docName)) {
 				if(Configurations.DEBUG)
 					System.err.println(creator + " ha tentato di creare un duplicato di " + docName);
 				return -1;
 			}
 			
+			//Controllo extra sulla validità dell'user richiedente, non dovrebbe essere necessario
 			if (!database.containsKey(creator)) {
 				if(Configurations.DEBUG)
 					System.err.println(creator + " utente sconosciuto (?)");
 				return -2;
 			}
 			
-			// https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml
 			InetAddress addr = null;
 			String aux;
 			
+			//cerca un indirizzo tra 239.0.0.0 e 239.255.255.255 non già utilizzato. 
+			//La motivazione del range limitato a 239.* è nella relazione
 			do {
 				aux = "239." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256) + "." + (int)Math.floor(Math.random()*256);
 				try {
 					addr = InetAddress.getByName(aux);
 					if(Configurations.DEBUG && multicastAddresses.contains(addr))
-						System.err.println("Una cosa altamente improbabile non è impossibile.");
+						System.err.println("Una cosa altamente improbabile non è impossibile.");		//è altamente improbabile che due documenti abbiano lo stesso address
 				} catch (UnknownHostException e) { e.printStackTrace(); }
 			} while(!addr.isMulticastAddress() && multicastAddresses.contains(addr));
 			
+			//se arrivo qua, l'indirizzo di Multicast non è usato da altri documenti, quindi le chat sono coerenti
 			multicastAddresses.add(addr);
 			Document d = new Document(creator, docName, sections, addr);
 			
+			//aggiorno effettivamente il database
 			docs.put(docName, d);
 			database.get(creator).addToEditableDocs(docName);
 		}
 		
-		File dir = new File("Documents/" + docName);
+		File dir = new File("Documents/" + docName);		// crea dentro Documents (creato in init() ) la cartella docName
 		dir.mkdir();
 		
 		for(int i = 0; i < sections; i++) {
-			File x = new File("Documents/" + docName, docName + i + ".txt");
+			File x = new File("Documents/" + docName, docName + i + ".txt");	//crea dentro la precedente cartella gli X files richiesti
 			try {
 				x.createNewFile();
 			} catch (IOException e) { e.printStackTrace(); }
 		}
+		
 		if(Configurations.DEBUG)
 			System.out.println(creator + " ha creato il documento " + docName + " con " + sections + " sezioni.");
 		return 0;
 	}
 	
 	
+	//		*** Richiesta di invito a documento ***
 	static int sendInvite(String sender, String receiver, String docName) {
 		
 		synchronized(updateDB) {
@@ -276,7 +299,7 @@ public class Turing {
 				return -5;
 			}
 			
-			if(usersOnline.contains(receiver)) {		//l'utente è online, scrivo immediatamente
+			if(usersOnline.contains(receiver)) {		//l'utente è online, scrivo immediatamente (live invite)
 				docs.get(docName).addEditor(receiver);
 				rec.addInstaInvites(docName);
 				rec.addToEditableDocs(docName);
@@ -284,7 +307,7 @@ public class Turing {
 					System.out.println(sender + " ha invitato (live)  " + receiver + " come editor del documento " + docName);
 			}
 			
-			else {										//l'utente è offline, salvo
+			else {										//l'utente è offline, salvo per quando si connetterà (pending invite)
 				docs.get(docName).addEditor(receiver);
 				rec.addPendingInvite(docName);
 				rec.addToEditableDocs(docName);
@@ -295,36 +318,42 @@ public class Turing {
 		return 0;
 	}
 	
+	//		*** Richiesta dei documenti (List) ***
 	static String getDocs(String username) {
 		
 		String res = null;
-		int antiBug = 0;
+		int antiBug = 0;			
 		
 		synchronized(updateDB) {
 			User u = database.get(username);
 			Object[] uDocs = u.getDocs().toArray();
-			antiBug = uDocs.length;
-			res = "Nessun documento.";
+			antiBug = uDocs.length; 		//se sarà != 0 -> c'è almeno un documento
+			res = "Nessun documento.";		//se non dovesse entrare nel ciclo, restituirà questa frase di default
 			
 			for(int i = 0; i < uDocs.length; i++) {
 				
-				Document d = docs.get(uDocs[i]);
-				String edtr = d.getEditors();
+				Document d = docs.get(uDocs[i]);		//prende il doc
+				String edtr = d.getEditors();			//prende gli editors
 				if(edtr == null)
-					edtr = "Nessuno.";			//evita di mostrare "null" nel risultato del Pannello del client
+					edtr = "Nessuno.";					//evito di mostrare "null" 
 				
-				if(res.equals("Nessun documento.")) 
+				if(res.equals("Nessun documento.")) 	//se è la prima iterazione..
 					res = "Nome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
-				else
+				else									
 					res = res + "\nNome documento: " + d.getName() +"\nCreatore: " + d.getCreator() + "\nCollaboratori: " + edtr;
-				res = res + '\n';				//per dare spazio tra info di un doc ed un altro
+				
+				res = res + '\n';					//per dare una newline tra info di un documento ed un altro
 			}
 		}
-		if(antiBug != 0)
+		
+		if(antiBug != 0)				//senza questo, la richiesta di List fa comparire un "null" nella finestra del Client
 			res = res + '\n';
+		
 		return res;
 	}
 	
+	
+	//		*** Richiesta di modifica sezione di documento ***
 	static String editDoc(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
 		
 		Document d = null;
@@ -333,35 +362,43 @@ public class Turing {
 		synchronized(updateDB) {
 			d = docs.get(docName);
 			
+			//se non esiste l'user o il doc richiedente/richiesto (anche qui, l'user dovrebbe essere sempre valido ma rimane il controllo extra)
 			if(database.get(username) == null || d == null) {
 				if(Configurations.DEBUG)
 					System.err.println("Turing [EditRequest]: User non esistente || Documento inesistente");
 				return "NULL";
 			}
 			
+			//se il richiedente non è né creatore né collaboratore del documento
 			if(!d.isCreator(username) && !d.isEditor(username)) {
 				if(Configurations.DEBUG)
 					System.err.println("Turing [EditRequest]:" + username + " non può modificare questo documento.");
 				return "UNABLE";
 			}
 			
+			//se la sezione richiesta è maggiore delle sezioni massime del documento
+			if(d.getSize() <= section)
+				return "OOB";
+			
+			//se qualcun altro sta già lavorando sulla stessa sezione del documento
 			if(d.isLocked(section)) {
 				if(Configurations.DEBUG)
 					System.err.println("Turing [EditRequest]: qualcuno sta già lavorando sulla sezione " + section + " di " + docName);
 				return "LOCK";
 			}
 			
+			//provo effettivamente a prendere la lock su tale documento (non dovrebbe fallire per via della synchronized, ma check comunque)
 			if(!d.editSection(section))
 				return "TRYLOCK";
-			
-			if(d.getSize() <= section)
-				return "OOB";
-			
+		
+			//apro in lettura il file richiesto
 			FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
+			//ed alloco un buffer per inviarlo al client
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			
 			boolean stop = false;
 			
+			//classica gestione NIO
 			while (!stop) { 
 				int bytesRead=inChannel.read(buffer);
 				if (bytesRead==-1) 
@@ -372,17 +409,20 @@ public class Turing {
 					clientChannel.write(buffer);
 				buffer.clear();
 			}
-			clientChannel.close();
-			inChannel.close(); 
-			res = d.getAddr().toString();
+			clientChannel.close();		//chiudo il channel verso il client per far sapere che è finita la fase di trasferimento
+			inChannel.close(); 			//chiudo il channel della lettura del file richiesto
+			
+			res = d.getAddr().toString();	//ottengo l'indirizzo di multicast del documento
 		}
 		if(Configurations.DEBUG)
 			System.out.println(username + " sta ora modificando la sezione " + section + " di " + docName);
 		
-		res = (String) res.subSequence(1, res.length());			//l'indirizzo ha uno / iniziale, lo tolgo
+		res = (String) res.subSequence(1, res.length());		//l'indirizzo di multicast ha uno / iniziale, lo tolgo
 		return res;
 	}
 
+	
+	//		*** Richiesta di upload della sezione di documento modificata ***
 	static String endEdit(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
 		
 		Document d = null;
@@ -390,14 +430,18 @@ public class Turing {
 			d = docs.get(docName);
 			
 			File x = new File("Documents/" + docName, docName + section + ".txt");
-			if(x.exists())
-				x.delete();
-			x.createNewFile();
+			if(x.exists())			//se esiste (dovrebbe in quanto è stato scaricato!)
+				x.delete();			//cancello il file precedente
+			x.createNewFile();		//crea il nuovo file su cui andrò a scrivere ciò che ricevo dal client
+			
+			//apro in scrittura il file target
 			FileChannel outChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"),	StandardOpenOption.WRITE);
+			//ed alloco un buffer per ricevere dal client
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			
 			boolean stop=false;
 			
+			//tutto come prima
 			while (!stop) { 
 				int bytesRead=clientChannel.read(buffer);
 				if (bytesRead==-1) 
@@ -411,22 +455,28 @@ public class Turing {
 			clientChannel.close(); 
 			outChannel.close();
 			
-			d.unlockSection(section);
+			d.unlockSection(section);			//unlock della sezione così è di nuovo modificabile
 			
 		}
-		return "SUCCESS";
+		
+		return "SUCCESS";						
 	}
 
+	
+	//		*** Richiesta di visualizzazione di sezione di un documento ***
 	static int getFile(String username, String docName, int section, SocketChannel clientChannel) throws IOException {
 		int res = 0;
 		
 		synchronized(updateDB) {
 			
+			//se il documento non esiste mi fermo
 			if(!docs.containsKey(docName))
 				return -1;
+			//se il documento sta venendo modificato, salvo l'informazione 
 			else if(docs.get(docName).isLocked(section))
 				res = 1;
 				
+			//stessa gestione NIO di poco fa
 			FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + section + ".txt"), StandardOpenOption.READ);
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			boolean stop = false;
@@ -444,27 +494,31 @@ public class Turing {
 			clientChannel.close();
 			inChannel.close(); 
 		}
-		return res;
+		
+		return res;			//di default è 0, che significa "nessuno ci sta lavorando". Se -1, il documento non esiste. Se 1, "qualcuno ci sta lavorando"
 	}
 
+	
+	// 		*** Richiesta di visualizzazione di intero documento ***
 	static int getDocument(String username, String docName, SocketChannel clientChannel) throws IOException {
 		int res = 0;
 		
 		synchronized(updateDB) {
 			
+			//se il documento non esiste
 			if(!docs.containsKey(docName))
 				return -1;
 			
 			Document d = docs.get(docName);
 			for(int i = 0; i < d.getSize(); i++) {
-				if(d.isLocked(i)) {
+				if(d.isLocked(i)) {				//controllo se almeno una persona sta modificando
 					res = 1;
 					break;
 				}
 			}
 			
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
-			
+			//Gestione NIO come le precedenti, ma più FileChannels di lettura. In pratica, avviene una concatenazione dei file txt in un unico txt
 			for(int i = 0; i < d.getSize(); i++) {
 				
 				FileChannel inChannel = FileChannel.open(Paths.get("Documents/" + docName + "/" + docName + i + ".txt"), StandardOpenOption.READ);
@@ -487,6 +541,7 @@ public class Turing {
 		return res;
 	}
 
+	//		Semplice unlok di una sezione
 	static void unlock(String nameServed, String docServed, int sectionDoc) {
 
 		synchronized(updateDB) {
@@ -496,6 +551,7 @@ public class Turing {
 		
 	}
 
+	//	Controllo dei permessi e simili per un user, un doc e la sua size
 	static int checkFile(String username, String docName, int section) {
 		
 		Document d = null;
@@ -524,6 +580,7 @@ public class Turing {
 		return d.getSize();
 	}
 
+	// 	Controllo simile al preedente, ma senza considerare la size
 	static boolean checkPermissions(String username, String docName) {
 		synchronized(updateDB) {
 			User u = database.get(username);
@@ -541,6 +598,7 @@ public class Turing {
 		return true;
 	}
 
+	// 	Controllo di supporto per sapere se un utente è online
 	static boolean isOnline(String nameServed) {
 		return usersOnline.contains(nameServed);
 	}

@@ -12,9 +12,9 @@ import java.util.Set;
 
 public class RequestHandler implements Runnable {
 
-	private String nameServed = "";
-	private String docServed = "";
-	private int sectionDoc;
+	private String nameServed = "";				//si salva il nome al Login per poter gestire la sua disconnessione in caso di crash etc
+	private String docServed = "";				//come nameServed, ma per il documento in fase di editing. Serve per rilasciare la lock
+	private int sectionDoc;						//di supporto a docServed, per sapere quale lock lasciare
 	private Socket clientSocket;
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
@@ -27,6 +27,14 @@ public class RequestHandler implements Runnable {
 		sectionDoc = -1;	
 	}
 	
+	/* 	Questo runnable gestisce le richieste del client. Il formato è semplice:
+	 * 
+	 * (1) Leggi richiesta (login, logout, etc.)
+	 * (2) se riconosciuta, leggi inputs (username, document, section, etc.)
+	 * (3) chiama un metodo di Turing per elaborare la richiesta ed attendi risultato
+	 * (4) una volta saputo il risultato della richiesta, inoltra al client
+	 * *** a volte questioni extra che commenterò
+	 */
 	@Override
 	public void run() {
 		boolean flag = true;
@@ -34,7 +42,7 @@ public class RequestHandler implements Runnable {
 			try {
 				
 				String username, password, answer, receiver, docName;
-				String command = inFromClient.readLine();
+				String command = inFromClient.readLine();			//legge richiesta del client
 				
 				if(command.equals("login")) {
 					
@@ -54,15 +62,14 @@ public class RequestHandler implements Runnable {
 					
 					outToClient.writeBytes(answer);
 					
-					if(answer.equals("SUCCESS\n")) {
-						sendPendingInvites();
+					if(answer.equals("SUCCESS\n")) {		//se il login ha avuto successo, il client deve essere informato
+						sendPendingInvites();				//degli inviti che l'utente ha ricevuto mentre era offline
 						
 						//creo channel
 						if(clientChannel == null)
 							clientChannel = createChannel();
 						
 					}
-					
 				}
 			
 				else if(command.equals("logout")) {
@@ -71,7 +78,7 @@ public class RequestHandler implements Runnable {
 					answer = "ERROR" + '\n';
 
 					if(Turing.disconnect(username)) {
-						nameServed = "";
+						nameServed = "";					//smette di ricordare il nome in quanto è già disconnesso
 						answer = "SUCCESS" + '\n';
 					}
 					
@@ -91,7 +98,7 @@ public class RequestHandler implements Runnable {
 					else if (res == -1)
 						answer = "DOC_EXISTS" + '\n';
 					else if (res == -2)
-						answer = "HACKER" + '\n';
+						answer = "HACKER" + '\n';			//l'errore HACKER è volutamente ironico in quanto reputo non sia possibile raggiungerlo
 					else
 						answer = "ERROR" + '\n';
 					
@@ -132,7 +139,7 @@ public class RequestHandler implements Runnable {
 					
 					int c = Turing.checkFile(username, docName, section);
 					
-					if(c == -5) 		//non serve gestire gli altri casi
+					if(c == -5) 		//non serve gestire gli altri casi, verranno gestiti dopo
 						outToClient.writeBytes("OOB" + '\n');
 					
 					else {
@@ -146,9 +153,9 @@ public class RequestHandler implements Runnable {
 							outToClient.writeBytes(res + '\n');
 						
 						else {
-							outToClient.writeBytes(res + '\n');		//success
-							docServed = docName;
-							sectionDoc = section;
+							outToClient.writeBytes(res + '\n');		//se sono qua -> success
+							docServed = docName;					//salvo nome del documento
+							sectionDoc = section;					//e sezione in caso di crash
 							
 							clientChannel = null;
 							clientChannel = createChannel();
@@ -164,7 +171,7 @@ public class RequestHandler implements Runnable {
 					
 					String res = Turing.endEdit(username, docName, section, clientChannel);
 					
-					sectionDoc = -1;
+					sectionDoc = -1;			//smetto di ricordare cosa stava modificando
 					docServed = "";
 					
 					outToClient.writeBytes(res + '\n');
@@ -176,7 +183,7 @@ public class RequestHandler implements Runnable {
 				else if (command.equals("list")) {
 					
 					username = inFromClient.readLine();
-					String res = Turing.getDocs(username);
+					String res = Turing.getDocs(username);		//restituisce la stringa già creata nel formato desiderato
 					outToClient.writeBytes(res + '\n');
 				}
 				
@@ -190,8 +197,8 @@ public class RequestHandler implements Runnable {
 					String check = null;
 					int c = 0;
 					
-					if(section == Configurations.MAX_SECTIONS) {			//documento intero 
-						if(Turing.checkPermissions(username, docName)) 
+					if(section == Configurations.MAX_SECTIONS) {			//documento intero (vedasi relazione)
+						if(Turing.checkPermissions(username, docName)) 		//controllo permessi
 							check = "SUCCESS";
 						else 
 							check = "UNABLE";
@@ -199,8 +206,8 @@ public class RequestHandler implements Runnable {
 						outToClient.writeBytes(check + '\n');
 					}
 					
-					else {												//section <> Config.MAX_SECTIONS
-						c = Turing.checkFile(username, docName, section);
+					else {													//section <> Config.MAX_SECTIONS
+						c = Turing.checkFile(username, docName, section);	//controllo permessi
 						
 						if(c == -1) 
 							check = "NO_EXIST";
@@ -221,12 +228,12 @@ public class RequestHandler implements Runnable {
 					
 					if(check.equals("SUCCESS")) {
 	
-						if(section < c) {
+						if(section < c) {		//scarica sezione singola del documento
 							res = Turing.getFile(username, docName, section, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la sezione " + section + " del file " + docName);
 						}
-						else {
+						else {					//scarica intero documento
 							res = Turing.getDocument(username, docName, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la versione intera del file " + docName);
@@ -250,7 +257,7 @@ public class RequestHandler implements Runnable {
 				}
 					
 			}
-			catch (Exception e) {
+			catch (Exception e) {			//qualsiasi eccezione accada, tenta di rilasciare tutto per preservare il server
 				try {
 					clientSocket.close();
 					if(!nameServed.equals(""))
@@ -277,6 +284,7 @@ public class RequestHandler implements Runnable {
         return socketChannel;
 	}
 
+	//invia gli inviti pendenti
 	private void sendPendingInvites() {
 		
 		try {	

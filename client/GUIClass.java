@@ -48,11 +48,13 @@ public class GUIClass extends JFrame {
 	private JLabel passLabel;
 	private JLabel logo;
 
+	//Costruttore che viene chiamato quando si esegue il client
 	public GUIClass() {
 		init();
 		loginUI();
 	}
 	
+	//Costruttore che viene chiamato quando si torna alla schermata GUIClass da GUILoggedClass.java
 	public GUIClass(Socket s, SocketChannel c, ServerSocketChannel ssc) {
 		clientSocket = s;
 		clientChannel = c;
@@ -66,6 +68,7 @@ public class GUIClass extends JFrame {
 		loginUI();
 	}
 	
+	//main del client, semplicemente chiama il primo costruttore e mostra la User Interface
 	public static void main(String[] args) throws IOException {
 		
 		GUIClass window = new GUIClass();
@@ -74,6 +77,7 @@ public class GUIClass extends JFrame {
 		window.setVisible(true);
 	}
 
+	//inizializzazioni varie
 	private void init() {
 		offline = false;
 		clientChannel = null;
@@ -89,6 +93,7 @@ public class GUIClass extends JFrame {
 		}
 	}
 
+	//interfaccia grafica
 	private void loginUI() {
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
@@ -146,7 +151,20 @@ public class GUIClass extends JFrame {
 		add(userField);
 		add(passField);
 		
-		SwingUtilities.getRootPane(loginButton).setDefaultButton(loginButton);
+		SwingUtilities.getRootPane(loginButton).setDefaultButton(loginButton);		//premendo la Enter Key di default chiamerà Login
+	}
+	
+	private boolean checkTextFields() {			//semplice controllo locale sugli inputs
+		
+		if(userField.getText().length() == 0) {
+			JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
+        	return false;
+		}
+		if(passField.getPassword().length == 0) {
+			JOptionPane.showMessageDialog(null, "Inserisci una Password.", "Error", JOptionPane.ERROR_MESSAGE);
+			return false;
+		}
+		return true;
 	}
 	
 	public void registerRequest() throws NotBoundException, RemoteException{
@@ -191,7 +209,8 @@ public class GUIClass extends JFrame {
         	JOptionPane.showMessageDialog(null, "Non puoi registrare una Password così lunga. Riprova", "Warning", JOptionPane.WARNING_MESSAGE);
         	return;
         }
-        
+
+
         Registry registry = LocateRegistry.getRegistry(Configurations.REGISTRATION_PORT);
         RegistrationInterface stub = (RegistrationInterface) registry.lookup(RegistrationInterface.SERVICE_NAME);
         boolean res = stub.registerRequest(inpUser, inpPass);
@@ -202,21 +221,6 @@ public class GUIClass extends JFrame {
 			JOptionPane.showMessageDialog(null, "Esiste già un utente registrato con questo nome.", "Error", JOptionPane.ERROR_MESSAGE);
 		
 	}
-
-	private boolean checkTextFields() {
-		
-		if(userField.getText().length() == 0) {
-			JOptionPane.showMessageDialog(null, "Inserisci un Username.", "Error", JOptionPane.ERROR_MESSAGE);
-        	return false;
-		}
-        	
-		if(passField.getPassword().length == 0) {
-			JOptionPane.showMessageDialog(null, "Inserisci una Password.", "Error", JOptionPane.ERROR_MESSAGE);
-			return false;
-		}
-		
-		return true;
-	}
 	
 	public void loginRequest() throws IOException {
 		
@@ -225,25 +229,25 @@ public class GUIClass extends JFrame {
 			return;
 		}
 		
-		outToServer.writeBytes("login" + '\n');
+		outToServer.writeBytes("login" + '\n');			//richiesta
 		
         String inpUser, inpPass;
         char[] inpPas;
         inpUser = userField.getText();        
-        outToServer.writeBytes(inpUser + '\n');
+        outToServer.writeBytes(inpUser + '\n');	
 
         inpPas = passField.getPassword();
         inpPass = new String(inpPas);
         outToServer.writeBytes(inpPass + '\n');
 
-        String res = inFromServer.readLine();
+        String res = inFromServer.readLine();			//risposta
 		
-		if(res.equals("SUCCESS")) {
+		if(res.equals("SUCCESS")) {						//passa alla modalità di gestione
 			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, inpUser, "login");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
-			this.dispose();
+			this.dispose();								//rilascia le risorse della finestra corrente (non di GUILoggedClass)
 			if(Configurations.DEBUG)
 				System.out.println("GUIClass: fine, passo in Logged");
 		}

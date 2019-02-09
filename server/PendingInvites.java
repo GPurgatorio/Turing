@@ -23,7 +23,7 @@ public class PendingInvites extends Thread {
 		while(true) {
 			Socket pendConnectionSocket;
 			
-			while (true) {		//listener
+			while (true) {					//listener
 				try {
 					pendConnectionSocket = null;
 					pendConnectionSocket = pendWelcomeSocket.accept();

@@ -94,12 +94,13 @@ public class GUIEditClass extends JFrame {
 		add(scrollPane);
 		*/
 		
-		c = new Chat(username, chatArea, chatSocket, group);
+		c = new Chat(username, chatArea, chatSocket, group);		//sniffer multicast
 		c.start();
 		
 		editUI();
 	}
 
+	//User Interface
 	private void editUI() throws IOException {
 		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
@@ -142,7 +143,7 @@ public class GUIEditClass extends JFrame {
 			}
 		});
 		
-		addWindowListener(new java.awt.event.WindowAdapter() {
+		addWindowListener(new java.awt.event.WindowAdapter() {		//in caso di chiusura della finestra
 		    @Override
 		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
 		    	try {
@@ -182,6 +183,7 @@ public class GUIEditClass extends JFrame {
 		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);
 	}
 
+	// Rappresenta l'end edit
 	protected void uploadFile() throws IOException {
 		FileChannel inChannel = FileChannel.open(Paths.get("Editing/" + username + "/" + docName + section + ".txt"), StandardOpenOption.READ);
 		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
@@ -202,6 +204,7 @@ public class GUIEditClass extends JFrame {
 		inChannel.close(); 
 	}
 
+	//lascia un messaggio di disconnessione agli altri utenti
 	protected void disconnect() throws IOException {
 		if(Configurations.DEBUG)
 			System.err.println("Disconnect");
@@ -212,6 +215,7 @@ public class GUIEditClass extends JFrame {
 		chatSocket.leaveGroup(group);
 	}
 
+	//invia il testo presente nella msgArea
 	private void sendMsg() throws IOException {
 		calendar = Calendar.getInstance(TimeZone.getDefault());
 		int hour = calendar.get(Calendar.HOUR);
@@ -229,6 +233,7 @@ public class GUIEditClass extends JFrame {
 		msgArea.setText("");
 	}
 
+	//torna alla schermata precedente (il pulsante chiama questo procedimento)
 	private void loggedUI() throws IOException {
 		outToServer.writeBytes("endEdit" + '\n');
 		

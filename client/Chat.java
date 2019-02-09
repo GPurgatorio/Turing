@@ -12,7 +12,7 @@ import server.Configurations;
 
 public class Chat extends Thread {
 	
-	private JTextArea chat;
+	private JTextArea chat;				//dove fare l'append dei messaggi ricevuti
 	private MulticastSocket socket;
 	private InetAddress group;
 	private boolean running;
@@ -28,7 +28,6 @@ public class Chat extends Thread {
 	
 	private void connectAlert(String msg) throws IOException {
 		if(msg.length() > 0) {
-			//crypt(msg)			se avanza tempo
 			byte[] m = msg.getBytes();
 			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
 			socket.send(packet);
@@ -52,7 +51,6 @@ public class Chat extends Thread {
 					socket.receive(packet);
 				
 					String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
-					//msg = decrypt(msg);						se avanza tempo
 					chat.append(msg + '\n');
 				} catch(SocketTimeoutException e) { ; }			//ignoro timeout
 			}

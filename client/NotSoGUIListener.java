@@ -12,7 +12,7 @@ import server.Configurations;
 
 public class NotSoGUIListener extends Thread {
 
-	private String username;
+	private String username;			//username di chi ha fatto partire questo listener
 	private Socket pendSocket;
 	private BufferedReader pendIFS;
 	private DataOutputStream pendOTS;
@@ -32,7 +32,7 @@ public class NotSoGUIListener extends Thread {
 	public void run() {
 		
 		try {
-			pendOTS.writeBytes(username + '\n');
+			pendOTS.writeBytes(username + '\n');		//faccio sapere quale utente deve essere monitorato
 		} catch (IOException e) { e.printStackTrace(); }
 		
 		if(Configurations.DEBUG)

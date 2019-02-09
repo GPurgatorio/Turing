@@ -8,11 +8,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Document {
 	
-	private String docName;
-	private String creator;
-	private List<String> editors;
-	private List<ReentrantLock> locks;
-	private InetAddress multicastAddr;
+	private String docName;						//nome del documento
+	private String creator;						//nome utente del creatore del documento
+	private List<String> editors;				//lista di persone invitate a modificare il documento
+	private List<ReentrantLock> locks;			//locks (rappresenta anche il numero di sezioni)
+	private InetAddress multicastAddr;			//indirizzo di multicast per la chat
 	
 	public Document(String creator, String docName, int n, InetAddress randAddr) {
 		this.creator = creator;
@@ -24,6 +24,8 @@ public class Document {
 		for(int i = 0; i < n; i++) 
 			locks.set(i, new ReentrantLock(true));					//lock con fairness
 	}
+	
+	//funzioni per operazioni standard sugli attributi di questa classe
 	
 	public synchronized String getName() {
 		return this.docName;

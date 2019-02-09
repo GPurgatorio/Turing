@@ -32,13 +32,13 @@ public class GUILoggedClass extends JFrame {
 	
 	private static final long serialVersionUID = 1L;
 	
-	private String username;
+	private String username;					//username dell'utente che ha fatto login
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static Socket clientSocket;
 	private static SocketChannel clientChannel;
 	private static ServerSocketChannel serverSocket;
-	private static NotSoGUIListener l;
+	private static NotSoGUIListener l;			//listener degli inviti live
 	private Image createDocImg, inviteImg, showImg, listImg, editImg, logoutImg;
 	private JButton createDocButton, inviteButton, editButton, listButton, showButton, logoutButton;
 	private JLabel userLabel;
@@ -63,9 +63,9 @@ public class GUILoggedClass extends JFrame {
 		
 		clientUI();
 		
-		if(fromWhat.equals("login")) {
+		if(fromWhat.equals("login")) {		//se arrivo da un login -> voglio controllare gli inviti
 			checkPendingInvites();
-			invitesListener();
+			invitesListener();				//e voglio attivare il Listener per gli inviti live
 		}
 		
 		if(Configurations.DEBUG)			//Per evitare confusione tra le varie consoles, un punto di riferimento
@@ -101,7 +101,7 @@ public class GUILoggedClass extends JFrame {
 			return;
 		}
 		
-		l = new NotSoGUIListener(pendSocket, username);
+		l = new NotSoGUIListener(pendSocket, username);		//listener inviti live
 		l.start();
 		
 		if(Configurations.DEBUG)
@@ -432,7 +432,7 @@ public class GUILoggedClass extends JFrame {
 			clientChannel = acceptServerSocket();
 			
 			if(Configurations.DEBUG)
-				System.out.println("Received File Successfully!");
+				System.out.println("File scaricato correttamente!");
 			
 			res = inFromServer.readLine();						//risultato richiesta
 		}
@@ -484,8 +484,8 @@ public class GUILoggedClass extends JFrame {
 		do {
 			tmp = inFromServer.readLine();		//costruisco la stringa finale
 			
-			if(tmp.length() < 1) {			//Il server manda uno \n per ogni riga (classico writeBytes) ed alla fine 
-				check++;					//un ulteriore \n, contandoli so quando ho finito i documenti
+			if(tmp.length() < 1) {				//Il server manda uno \n per ogni riga (classico writeBytes) ed alla fine 
+				check++;						//un ulteriore \n, contandoli so quando ho finito i documenti
 				res = res + '\n';
 			}
 			else {
