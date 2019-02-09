@@ -135,6 +135,7 @@ public class GUIEditClass extends JFrame {
 			public void actionPerformed(ActionEvent ae) {
 				c.disable();
 				try {
+					disconnect();
 					chatSocket.leaveGroup(group);
 					loggedUI();
 				} catch (IOException e) { e.printStackTrace(); }

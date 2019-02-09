@@ -233,7 +233,7 @@ public class GUILoggedClass extends JFrame {
 		
 		Object[] struct = {
 				"Nome Documento:", docLabel,
-				"Numero Sezioni [1-" + Configurations.MAX_SECTIONS + "]:", secLabel
+				"Numero Sezioni [2-" + Configurations.MAX_SECTIONS + "]:", secLabel
 		};
 		
 		String res, docName = null;
@@ -253,7 +253,7 @@ public class GUILoggedClass extends JFrame {
 			catch (NumberFormatException e) {
 				sections = -1;
 			}
-		} while (sections < 1 || sections > Configurations.MAX_SECTIONS || docName == null || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
+		} while (sections < 2 || sections > Configurations.MAX_SECTIONS || docName == null || !docName.matches(Configurations.VALID_CHARACTERS));	//prendi inputs corretti || stop
 		
 		outToServer.writeBytes("createDoc" + '\n');			//richiesta
 		
@@ -406,7 +406,7 @@ public class GUILoggedClass extends JFrame {
 			
 			FileChannel outChannel;
 			
-			if(sections > 0 && sections < Configurations.MAX_SECTIONS)		//se è arrivato qua il file esiste, quindi è <= #sezioni e perciò ovviamente <= MaxSections
+			if(sections >= 0 && sections < Configurations.MAX_SECTIONS)		//se è arrivato qua il file esiste, quindi è <= #sezioni e perciò ovviamente <= MaxSections
 				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + sections + ".txt"),	StandardOpenOption.WRITE);
 			else
 				outChannel = FileChannel.open(Paths.get("Downloads/" + username + "/" + docName + "_COMPLETE.txt"),	StandardOpenOption.WRITE);
