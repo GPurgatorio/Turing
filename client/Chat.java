@@ -12,12 +12,17 @@ import server.Configurations;
 
 public class Chat extends Thread {
 	
-	private JTextArea chat;				//dove fare l'append dei messaggi ricevuti
-	private MulticastSocket socket;
-	private InetAddress group;
+	// Chat related
 	private boolean running;
 	private String username;
 	
+	// Chat - Chat related
+	private JTextArea chat;				// Dove fare l'append dei messaggi ricevuti
+	private MulticastSocket socket;
+	private InetAddress group;
+	
+	
+	//Costruttore
 	public Chat(String u, JTextArea c, MulticastSocket s, InetAddress g) {
 		chat = c;
 		socket = s;
@@ -26,6 +31,8 @@ public class Chat extends Thread {
 		running = true;
 	}
 	
+	
+	// Viene chiamato per mandare un messaggio di notifica a tutti gli altri utenti che l'user si è connesso
 	private void connectAlert(String msg) throws IOException {
 		if(msg.length() > 0) {
 			byte[] m = msg.getBytes();
@@ -34,6 +41,8 @@ public class Chat extends Thread {
 		}
 	}
 
+	
+	// Fino alla disabilitazione si mette in attesa di messaggi da ricevere ed appendere
 	public void run() {
 		byte[] buffer = new byte[1024];
 		DatagramPacket packet;
@@ -52,14 +61,15 @@ public class Chat extends Thread {
 				
 					String msg = new String(packet.getData(), packet.getOffset(), packet.getLength());
 					chat.append(msg + '\n');
-				} catch(SocketTimeoutException e) { ; }			//ignoro timeout
+					
+				} catch(SocketTimeoutException e) { ; }			// Ignoro timeout
 			}
-		
 		} catch (IOException e1) { e1.printStackTrace(); }
 	}
 
+	
+	// Quando il client esce dalla fase di Editing interrompe Chat chiamando questo metodo (Graceful Shutdown)
 	public void disable() {
 		running = false;
 	}
-
 }

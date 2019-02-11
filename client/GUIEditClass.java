@@ -1,6 +1,5 @@
 package client;
 
-//import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -29,10 +28,11 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-//import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-//import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.JTextArea;
+//import java.awt.Dimension;
+//import javax.swing.ScrollPaneConstants;
+//import javax.swing.JScrollPane;
 
 import server.Configurations;
 
@@ -40,25 +40,33 @@ public class GUIEditClass extends JFrame {
 
 	private static final long serialVersionUID = 1L;
 
-	private String username;
-	private String docName;
-	private int section;
+	// Client related
+	private String username;				// Chi sta lavorando
+	private String docName;					// Nome del documento che sta venendo modificato (e che quindi verrà caricato)
+	private int section;					// Sezione del documento
+	
+	// Client-Server related
+	private Socket clientSocket;			// Socket per la gestione TCP
+	private DataOutputStream outToServer; 
+	private BufferedReader inFromServer;
+	private SocketChannel clientChannel;	// Socket diretta verso il server per salvare le modifiche
+	private ServerSocketChannel serverSocket;
+	private MulticastSocket chatSocket;		// Socket per la chat Multicast UDP
+	private InetAddress group;
+	private Chat c;							// Listener per la chat
+	private Calendar calendar;				// Per poter mettere l'orario nei messaggi
+	
+	// User Interface related
 	private JButton sendMsgButton, endEditButton;
 	private JLabel userLabel;
 	private JTextArea chatArea, msgArea; 
-	//private JScrollPane scrollPane; 
 	private Image endEditImg, sendMsgImg;
-	private DataOutputStream outToServer; 
-	private BufferedReader inFromServer;
-	private Socket clientSocket;
-	private SocketChannel clientChannel;
-	private ServerSocketChannel serverSocket;
-	private MulticastSocket chatSocket;
-	private InetAddress group;
-	private Chat c;
-	private Calendar calendar;
+	//private JScrollPane scrollPane; 
 	
+	
+	// Costruttore
 	public GUIEditClass(Socket s, SocketChannel sc, ServerSocketChannel ssc, String usr, String addr, String doc, int sec) throws IOException {
+		
 		clientSocket = s;
 		clientChannel = sc;
 		serverSocket = ssc;
@@ -78,12 +86,14 @@ public class GUIEditClass extends JFrame {
 		chatArea.setEditable(false);
 		chatArea.setLineWrap(true);
 		chatArea.setWrapStyleWord(true);
+		
 		msgArea = new JTextArea();
 		msgArea.setEditable(true);
 		msgArea.setLineWrap(true);
 		msgArea.setWrapStyleWord(true);
+		
 		/* 
-		 * con setLayout(null) sembra essere impossibile, essendo una cosa semplicemente grafica lascio perdere
+		 * con setLayout(null) non sembra essere possibile, essendo una cosa semplicemente grafica lascio perdere
 		 * 
 		scrollPane = new JScrollPane(chatArea);
 		scrollPane.setPreferredSize(new Dimension(320,240));
@@ -94,7 +104,8 @@ public class GUIEditClass extends JFrame {
 		add(scrollPane);
 		*/
 		
-		c = new Chat(username, chatArea, chatSocket, group);		//sniffer multicast
+		// Thread di supporto Sniffer Multicast, starà in attesa di messaggi per appenderli alla chatArea
+		c = new Chat(username, chatArea, chatSocket, group);		
 		c.start();
 		
 		editUI();
@@ -103,8 +114,8 @@ public class GUIEditClass extends JFrame {
 	//User Interface
 	private void editUI() throws IOException {
 		
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 
-		setLayout(null);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); 		// Per terminare l'applicazione quando viene chiusa
+		setLayout(null);										// Per gestire manualmente tutta l'interfaccia
 		setSize(450,450);
 
 		endEditImg = ImageIO.read(new File("img/upload.png"));
@@ -134,17 +145,17 @@ public class GUIEditClass extends JFrame {
 		
 		endEditButton.addActionListener(new ActionListener() { 
 			public void actionPerformed(ActionEvent ae) {
-				c.disable();
+				c.disable();								// Interrompe il listener della chat
 				try {
-					disconnect();
-					loggedUI();
+					disconnect();							// Manda il messaggio di disconnessione agli altri utenti
+					loggedUI();								// Torna all'interfaccia precedente
 				} catch (IOException e) { e.printStackTrace(); }
 			}
 		});
 		
-		addWindowListener(new java.awt.event.WindowAdapter() {		//in caso di chiusura della finestra
+		addWindowListener(new java.awt.event.WindowAdapter() {		
 		    @Override
-		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
+		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {		// In caso di chiusura della finestra
 		    	try {
 					disconnect();
 				} catch (IOException e) { e.printStackTrace(); }
@@ -154,8 +165,8 @@ public class GUIEditClass extends JFrame {
 		msgArea.addKeyListener(new KeyListener(){
 
             public void keyPressed(KeyEvent e) {
-				if(e.getKeyCode() == KeyEvent.VK_ENTER) {
-				      try {
+				if(e.getKeyCode() == KeyEvent.VK_ENTER) {			// Se viene premuto Invio mentre si è sulla msgArea
+				      try {											// Invia il contenuto
 						sendMsg();
 				      } catch (IOException e1) { e1.printStackTrace(); }
 				}
@@ -163,9 +174,9 @@ public class GUIEditClass extends JFrame {
             
 			@Override
 			public void keyReleased(KeyEvent e) {
-				if(e.getKeyCode() == KeyEvent.VK_ENTER) 
-					msgArea.setText("");
-			}
+				if(e.getKeyCode() == KeyEvent.VK_ENTER) 			// Approssimazione del pulire una text area dopo aver inviato il messaggio
+					msgArea.setText("");							// Viene inserito qua e non direttamente in sendMsg in quanto
+			}														// altrimenti avremmo sempre una newline dopo l'invio di ciascun msg
 			@Override
 			public void keyTyped(KeyEvent e) {;}
 		});
@@ -178,44 +189,14 @@ public class GUIEditClass extends JFrame {
 		userLabel = new JLabel("Current user: " + username);
 		userLabel.setBounds(13, 13, 200, 15);
 		add(userLabel);
-		
-		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);
+																					// Se non si ha il controllo direttamente sulla
+		SwingUtilities.getRootPane(sendMsgButton).setDefaultButton(sendMsgButton);	// msgArea, premere Invio chiama questo bottone	
 	}
-
-	// Rappresenta l'end edit
-	protected void uploadFile() throws IOException {
-		FileChannel inChannel = FileChannel.open(Paths.get("Editing/" + username + "/" + docName + section + ".txt"), StandardOpenOption.READ);
-		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
-		
-		boolean stop = false;
-		
-		while (!stop) { 
-			int bytesRead=inChannel.read(buffer);
-			if (bytesRead==-1) {
-				stop=true;
-			}
-			buffer.flip();
-			while (buffer.hasRemaining())
-				clientChannel.write(buffer);
-			buffer.clear();
-		}
-		clientChannel.close();
-		inChannel.close(); 
-	}
-
-	//lascia un messaggio di disconnessione agli altri utenti
-	protected void disconnect() throws IOException {
-		if(Configurations.DEBUG)
-			System.err.println("Disconnect");
-		String finalMsg = username + " si è disconnesso.\n";
-		byte[] m = finalMsg.getBytes();
-		DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
-		chatSocket.send(packet);
-		chatSocket.leaveGroup(group);
-	}
-
-	//invia il testo presente nella msgArea
+	
+	
+	// Invia il testo presente nella msgArea
 	private void sendMsg() throws IOException {
+		
 		calendar = Calendar.getInstance(TimeZone.getDefault());
 		int hour = calendar.get(Calendar.HOUR);
 		int minute = calendar.get(Calendar.MINUTE);
@@ -223,16 +204,17 @@ public class GUIEditClass extends JFrame {
 		String input = msgArea.getText();
 		String msg = "[" + username + " " + hour + ":" + minute + "]: " + input;
 		
-		if(input.length() > 0) {
+		if(input.length() > 0) {			// Se effettivamente si sta inviando qualcosa..
 			byte[] m = msg.getBytes();
 			DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
 			chatSocket.send(packet);
 		}
 		
-		msgArea.setText("");
+		msgArea.setText("");				// Azzera la msgArea
 	}
 
-	//torna alla schermata precedente (il pulsante chiama questo procedimento)
+	
+	// Richiesta di End Edit (TCP)
 	private void loggedUI() throws IOException {
 		outToServer.writeBytes("endEdit" + '\n');
 		
@@ -240,13 +222,14 @@ public class GUIEditClass extends JFrame {
 		outToServer.writeBytes(docName + '\n');
 		outToServer.writeByte(section);
 		
-		uploadFile();
+		uploadFile();								// Salva il file sul server
 		
 		String res = inFromServer.readLine();
 		
 		clientChannel = null;
 		
 		if(res.equals("SUCCESS")) {
+			
 			if(Configurations.DEBUG)
 				System.out.println("Fine Edit, torno in Logged");
 			c.disable();
@@ -256,5 +239,39 @@ public class GUIEditClass extends JFrame {
 			w.setVisible(true);
 			this.dispose();
 		}
+	}
+	
+	
+	// Carica il file (sia che sia stato modificato o meno) che è stato precedentemente scaricato
+	protected void uploadFile() throws IOException {
+		
+		FileChannel inChannel = FileChannel.open(Paths.get("Editing/" + username + "/" + docName + section + ".txt"), StandardOpenOption.READ);
+		ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
+		
+		boolean stop = false;
+		
+		while (!stop) { 
+			int bytesRead=inChannel.read(buffer);
+			if (bytesRead==-1) 
+				stop=true;
+
+			buffer.flip();
+			while (buffer.hasRemaining())
+				clientChannel.write(buffer);
+			buffer.clear();
+		}
+		clientChannel.close();
+		inChannel.close(); 
+	}
+
+	
+	// Lascia un messaggio di disconnessione nella chat per gli altri utenti
+	protected void disconnect() throws IOException {
+
+		String finalMsg = username + " si è disconnesso.\n";
+		byte[] m = finalMsg.getBytes();
+		DatagramPacket packet = new DatagramPacket(m, m.length, group, Configurations.MULTICAST_PORT);
+		chatSocket.send(packet);
+		chatSocket.leaveGroup(group);
 	}
 }

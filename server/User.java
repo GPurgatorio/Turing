@@ -5,12 +5,14 @@ import java.util.Set;
 
 public class User {
 	
-	private String username;			//rappresentatore univoco all'interno del database
+	private String username;			// Rappresentatore univoco all'interno del database
 	private String password;
-	private Set<String> userDocs;		//insieme dei documenti che un utente è abilitato a modificare
-	private Set<String> pendingInvites;	//insieme dei documenti a cui l'utente è stato invitato mentre era offline
-	private Set<String> instaInvites;	//insieme dei documenti usato per la gestione degli inviti mentre è online
+	private Set<String> userDocs;		// Insieme dei documenti che un utente è abilitato a modificare
+	private Set<String> pendingInvites;	// Insieme dei documenti a cui l'utente è stato invitato mentre era offline
+	private Set<String> instaInvites;	// Insieme dei documenti usato per la gestione degli inviti mentre è online
 	
+	
+	// Costruttore
 	public User(String username, String password) {
 		this.username = username;
 		this.password = password;
@@ -19,7 +21,7 @@ public class User {
 		this.instaInvites = new HashSet<String>();
 	}
 
-	//funzioni per operazioni standard sugli attributi di questa classe
+	// Funzioni per operazioni standard sugli attributi di questa classe
 	
 	public synchronized String getUser() {
 		return this.username;

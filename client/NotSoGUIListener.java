@@ -12,12 +12,17 @@ import server.Configurations;
 
 public class NotSoGUIListener extends Thread {
 
+	// NotSoGUIListener related
 	private String username;			//username di chi ha fatto partire questo listener
-	private Socket pendSocket;
-	private BufferedReader pendIFS;
-	private DataOutputStream pendOTS;
 	private boolean running;
 	
+	// NotSoGUIListener - Server related
+	private Socket pendSocket;			// Socket per la gestione TCP
+	private BufferedReader pendIFS;		// IFS = InFromServer
+	private DataOutputStream pendOTS;	// OTS = OutToServer
+
+	
+	// Costruttore
 	public NotSoGUIListener(Socket pendSocket, String username) {
 		this.username = username;
 		this.pendSocket = pendSocket;
@@ -29,10 +34,12 @@ public class NotSoGUIListener extends Thread {
 		} catch (IOException e) { e.printStackTrace(); }
 	}
 	
+	
+	// Fintanto non viene interrotto, si mette in attesa di Inviti Live
 	public void run() {
 		
 		try {
-			pendOTS.writeBytes(username + '\n');		//faccio sapere quale utente deve essere monitorato
+			pendOTS.writeBytes(username + '\n');			// Faccio sapere quale utente deve essere monitorato
 		} catch (IOException e) { e.printStackTrace(); }
 		
 		if(Configurations.DEBUG)
@@ -57,6 +64,4 @@ public class NotSoGUIListener extends Thread {
 	public void disable() {
 		running = false;
 	}
-
-	
 }

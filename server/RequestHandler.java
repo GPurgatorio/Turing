@@ -12,13 +12,16 @@ import java.util.Set;
 
 public class RequestHandler implements Runnable {
 
-	private String nameServed = "";				//si salva il nome al Login per poter gestire la sua disconnessione in caso di crash etc
-	private String docServed = "";				//come nameServed, ma per il documento in fase di editing. Serve per rilasciare la lock
-	private int sectionDoc;						//di supporto a docServed, per sapere quale lock lasciare
-	private Socket clientSocket;
+	// RequestHandler related
+	private String nameServed = "";				// Si salva il nome al Login per poter gestire la sua disconnessione in caso di crash etc
+	private String docServed = "";				// Come nameServed, ma per il documento in fase di editing. Serve per rilasciare la lock
+	private int sectionDoc;						// Di supporto a docServed, per sapere quale lock lasciare
+	
+	// Client-Server related
+	private Socket clientSocket;				// Socket per la gestione TCP
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
-	private SocketChannel clientChannel = null;
+	private SocketChannel clientChannel = null;	// Channel per la gestione file
 	
 	public RequestHandler(Socket s) throws IOException {
 		clientSocket = s;
@@ -42,7 +45,7 @@ public class RequestHandler implements Runnable {
 			try {
 				
 				String username, password, answer, receiver, docName;
-				String command = inFromClient.readLine();			//legge richiesta del client
+				String command = inFromClient.readLine();			// Legge richiesta del client
 				
 				if(Configurations.DEBUG)
 					System.out.println("Request Handler: gestisce una richiesta di " + command);
@@ -65,8 +68,8 @@ public class RequestHandler implements Runnable {
 					
 					outToClient.writeBytes(answer);
 					
-					if(answer.equals("SUCCESS\n")) {		//se il login ha avuto successo, il client deve essere informato
-						sendPendingInvites();				//degli inviti che l'utente ha ricevuto mentre era offline
+					if(answer.equals("SUCCESS\n")) {		// Se il login ha avuto successo, il client deve essere informato
+						sendPendingInvites();				// Degli inviti che l'utente ha ricevuto mentre era offline
 						
 						//creo channel
 						if(clientChannel == null)
@@ -81,7 +84,7 @@ public class RequestHandler implements Runnable {
 					answer = "ERROR" + '\n';
 
 					if(Turing.disconnect(username)) {
-						nameServed = "";					//smette di ricordare il nome in quanto è già disconnesso
+						nameServed = "";					// Smette di ricordare il nome in quanto è già disconnesso
 						answer = "SUCCESS" + '\n';
 					}
 					
@@ -101,7 +104,7 @@ public class RequestHandler implements Runnable {
 					else if (res == -1)
 						answer = "DOC_EXISTS" + '\n';
 					else if (res == -2)
-						answer = "HACKER" + '\n';			//l'errore HACKER è volutamente ironico in quanto reputo non sia possibile raggiungerlo
+						answer = "HACKER" + '\n';			// L'errore HACKER è volutamente ironico in quanto reputo non sia possibile raggiungerlo
 					else
 						answer = "ERROR" + '\n';
 					
@@ -142,7 +145,7 @@ public class RequestHandler implements Runnable {
 					
 					int c = Turing.checkFile(username, docName, section);
 					
-					if(c == -5) 		//non serve gestire gli altri casi, verranno gestiti dopo
+					if(c == -5) 		// Non serve gestire gli altri casi, verranno gestiti dopo
 						outToClient.writeBytes("OOB" + '\n');
 					
 					else {
@@ -156,9 +159,9 @@ public class RequestHandler implements Runnable {
 							outToClient.writeBytes(res + '\n');
 						
 						else {
-							outToClient.writeBytes(res + '\n');		//se sono qua -> success
-							docServed = docName;					//salvo nome del documento
-							sectionDoc = section;					//e sezione in caso di crash
+							outToClient.writeBytes(res + '\n');		// Se sono qua -> success
+							docServed = docName;					// Salvo nome del documento
+							sectionDoc = section;					// E sezione in caso di crash
 							
 							clientChannel = null;
 							clientChannel = createChannel();
@@ -174,7 +177,7 @@ public class RequestHandler implements Runnable {
 					
 					String res = Turing.endEdit(username, docName, section, clientChannel);
 					
-					sectionDoc = -1;			//smetto di ricordare cosa stava modificando
+					sectionDoc = -1;			// Smetto di ricordare cosa stava modificando
 					docServed = "";
 					
 					outToClient.writeBytes(res + '\n');
@@ -186,7 +189,7 @@ public class RequestHandler implements Runnable {
 				else if (command.equals("list")) {
 					
 					username = inFromClient.readLine();
-					String res = Turing.getDocs(username);		//restituisce la stringa già creata nel formato desiderato
+					String res = Turing.getDocs(username);		// Restituisce la stringa già creata nel formato desiderato
 					outToClient.writeBytes(res + '\n');
 				}
 				
@@ -200,8 +203,8 @@ public class RequestHandler implements Runnable {
 					String check = null;
 					int c = 0;
 					
-					if(section == Configurations.MAX_SECTIONS) {			//documento intero (vedasi relazione)
-						if(Turing.checkPermissions(username, docName)) 		//controllo permessi
+					if(section == Configurations.MAX_SECTIONS) {			// Documento intero (vedasi relazione)
+						if(Turing.checkPermissions(username, docName)) 		// Controllo permessi
 							check = "SUCCESS";
 						else 
 							check = "UNABLE";
@@ -209,8 +212,8 @@ public class RequestHandler implements Runnable {
 						outToClient.writeBytes(check + '\n');
 					}
 					
-					else {													//section <> Config.MAX_SECTIONS
-						c = Turing.checkFile(username, docName, section);	//controllo permessi
+					else {													// Section <> Config.MAX_SECTIONS
+						c = Turing.checkFile(username, docName, section);	// Controllo permessi
 						
 						if(c == -1) 
 							check = "NO_EXIST";
@@ -221,9 +224,9 @@ public class RequestHandler implements Runnable {
 						else if(c == -4)
 							check = "UNABLEU";
 						else if(c == -5)
-							check = "OOB";								//section > #files
+							check = "OOB";								// Section > #files
 						else
-							check = "SUCCESS";							//section < #files
+							check = "SUCCESS";							// Section < #files
 						
 						outToClient.writeBytes(check + '\n');
 					}
@@ -231,7 +234,7 @@ public class RequestHandler implements Runnable {
 
 					if(check.equals("SUCCESS")) {
 	
-						if(section < c) {		//scarica sezione singola del documento
+						if(section < c) {								// Scarica sezione singola del documento
 							res = Turing.getFile(username, docName, section, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la sezione " + section + " del file " + docName);
@@ -246,7 +249,7 @@ public class RequestHandler implements Runnable {
 								outToClient.writeBytes("ERROR" + '\n');
 						}
 						
-						else {					//scarica intero documento
+						else {											// Scarica intero documento
 							String tmp = Turing.getDocument(username, docName, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la versione intera del file " + docName);
@@ -257,7 +260,7 @@ public class RequestHandler implements Runnable {
 								case "NO_EXIST":
 									outToClient.writeBytes("NO_EXIST" + '\n');
 									break;
-								default:		//sezioni occupate
+								default:		// Sezioni occupate
 									if(tmp.startsWith("Sezioni"))
 										outToClient.writeBytes(tmp + '\n');
 									else
@@ -276,23 +279,25 @@ public class RequestHandler implements Runnable {
 				}
 					
 			}
-			catch (Exception e) {			//qualsiasi eccezione accada, tenta di rilasciare tutto per preservare il server
+			catch (Exception e) {			// Qualsiasi eccezione accada, tenta di rilasciare tutto per preservare la consistenza dei dati
 				try {
-					clientSocket.close();
-					if(!nameServed.equals(""))
+					clientSocket.close();			// Chiudo socket tanto il client non è più attivo
+					if(!nameServed.equals(""))		// Disconnect in modo da farlo riconnettere
 						Turing.disconnect(nameServed);
-					if(sectionDoc != -1) 			//unlock in caso di crash
+					if(sectionDoc != -1) 			// Unlock in caso di crash
 						Turing.unlock(nameServed, docServed, sectionDoc);
-					flag = false;
+					flag = false;					// Graceful Shutdown
 				} catch (IOException e1) {
 					e1.printStackTrace();
 				}
 			}
 		} while(flag);
 		
-		System.err.println("Un runnable RH ha terminato i suoi servizi.");
+		if(Configurations.DEBUG)
+			System.err.println("Un runnable RH ha terminato i suoi servizi.");
 	}
 
+	// Genera un SocketChannel per la gestione file
 	private SocketChannel createChannel() throws IOException {
 		SocketChannel socketChannel = SocketChannel.open();
 		int port = nameServed.hashCode() % 65535;
@@ -305,7 +310,7 @@ public class RequestHandler implements Runnable {
         return socketChannel;
 	}
 
-	//invia gli inviti pendenti
+	// Invia gli inviti pendenti di nameServed
 	private void sendPendingInvites() {
 		
 		try {	
@@ -317,8 +322,8 @@ public class RequestHandler implements Runnable {
 					outToClient.writeBytes(it.next() + '\n');
 			}
 
-			outToClient.writeByte('\n');		//notifica la fine dei documenti (N.B. non possono esistere documenti con questo nome!)
-			Turing.resetInvites(nameServed);
+			outToClient.writeByte('\n');		// Notifica la fine dei documenti (N.B. non possono esistere documenti con questo nome!)
+			Turing.resetInvites(nameServed);	// Pulisce il set in modo da non reinviarli al prossimo login
 		
 		} catch (IOException e) { e.printStackTrace(); }
 		

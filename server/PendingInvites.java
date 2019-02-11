@@ -13,17 +13,20 @@ public class PendingInvites extends Thread {
 	private ServerSocket pendWelcomeSocket;
 	private ExecutorService pend_e;
 	
+	
+	// Costruttore
 	public PendingInvites() throws UnknownHostException, IOException {
 		pendWelcomeSocket  = new ServerSocket(Configurations.INVITE_PORT, 0, InetAddress.getByName(null));
 		pend_e = Executors.newFixedThreadPool(Configurations.THREADPOOL_EX_THREADS);
 	}
+	
 	
 	public void run() {
 		
 		while(true) {
 			Socket pendConnectionSocket;
 			
-			while (true) {					//listener
+			while (true) {					// Listener start
 				try {
 					pendConnectionSocket = null;
 					pendConnectionSocket = pendWelcomeSocket.accept();
