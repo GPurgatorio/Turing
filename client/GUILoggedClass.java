@@ -463,9 +463,13 @@ public class GUILoggedClass extends JFrame {
 				JOptionPane.showMessageDialog(null, "Hai richiesto una sezione non globale ed Out Of Bound.", "Error", JOptionPane.ERROR_MESSAGE);
 				break;
 			default:
-				JOptionPane.showMessageDialog(null, "Errore generico.");
-				if(Configurations.DEBUG)
-					System.err.println(res);
+				if(res.startsWith("Sezioni"))
+					JOptionPane.showMessageDialog(null, "Documento " + docName + " completo scaricato con successo. " + res);
+				else {
+					JOptionPane.showMessageDialog(null, "Errore generico.");
+					if(Configurations.DEBUG)
+						System.err.println(res);
+				}
 				break;
 		}
 	}
@@ -645,7 +649,10 @@ public class GUILoggedClass extends JFrame {
 		if(!res.equals("ERROR")) {
 			username = "";
 			l.disable();
-			GUIClass w = new GUIClass(clientSocket, clientChannel, serverSocket);			//torno alla schermata di login/register (connessione persistente)
+			clientSocket.close();
+			clientChannel.close();
+			serverSocket.close();
+			GUIClass w = new GUIClass();			//torno alla schermata di login/register (connessione persistente)
 			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);

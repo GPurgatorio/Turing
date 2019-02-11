@@ -54,29 +54,6 @@ public class GUIClass extends JFrame {
 		loginUI();
 	}
 	
-	//Costruttore che viene chiamato quando si torna alla schermata GUIClass da GUILoggedClass.java
-	public GUIClass(Socket s, SocketChannel c, ServerSocketChannel ssc) {
-		clientSocket = s;
-		clientChannel = c;
-		serverSocket = ssc;
-		
-		try {
-			outToServer = new DataOutputStream(clientSocket.getOutputStream());
-			inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-		} catch (IOException e) { e.printStackTrace(); }
-
-		loginUI();
-	}
-	
-	//main del client, semplicemente chiama il primo costruttore e mostra la User Interface
-	public static void main(String[] args) throws IOException {
-		
-		GUIClass window = new GUIClass();
-		window.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);		
-		window.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
-		window.setVisible(true);
-	}
-
 	//inizializzazioni varie
 	private void init() {
 		offline = false;
@@ -92,6 +69,17 @@ public class GUIClass extends JFrame {
 			offline = true;
 		}
 	}
+	
+	
+	//main del client, semplicemente chiama il primo costruttore e mostra la User Interface
+	public static void main(String[] args) throws IOException {
+		
+		GUIClass window = new GUIClass();
+		window.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);		
+		window.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
+		window.setVisible(true);
+	}
+
 
 	//interfaccia grafica
 	private void loginUI() {

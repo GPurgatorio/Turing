@@ -500,22 +500,24 @@ public class Turing {
 
 	
 	// 		*** Richiesta di visualizzazione di intero documento ***
-	static int getDocument(String username, String docName, SocketChannel clientChannel) throws IOException {
-		int res = 0;
+	static String getDocument(String username, String docName, SocketChannel clientChannel) throws IOException {
+		String res = "SUCCESS";
 		
 		synchronized(updateDB) {
 			
 			//se il documento non esiste
 			if(!docs.containsKey(docName))
-				return -1;
+				return "NO_EXIST";
 			
 			Document d = docs.get(docName);
 			for(int i = 0; i < d.getSize(); i++) {
 				if(d.isLocked(i)) {				//controllo se almeno una persona sta modificando
-					res = 1;
-					break;
+					if(res.equals("SUCCESS")) 
+						res = "Sezioni sotto modifica: ";
+					res = res + i + " ";
 				}
 			}
+			
 			
 			ByteBuffer buffer = ByteBuffer.allocateDirect(1024*1024);
 			//Gestione NIO come le precedenti, ma più FileChannels di lettura. In pratica, avviene una concatenazione dei file txt in un unico txt

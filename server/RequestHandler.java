@@ -44,6 +44,9 @@ public class RequestHandler implements Runnable {
 				String username, password, answer, receiver, docName;
 				String command = inFromClient.readLine();			//legge richiesta del client
 				
+				if(Configurations.DEBUG)
+					System.out.println("Request Handler: gestisce una richiesta di " + command);
+				
 				if(command.equals("login")) {
 					
 					username = inFromClient.readLine();
@@ -225,31 +228,47 @@ public class RequestHandler implements Runnable {
 						outToClient.writeBytes(check + '\n');
 					}
 
-					
+
 					if(check.equals("SUCCESS")) {
 	
 						if(section < c) {		//scarica sezione singola del documento
 							res = Turing.getFile(username, docName, section, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la sezione " + section + " del file " + docName);
+							
+							if(res == 0)
+								outToClient.writeBytes("SUCCESS" + '\n');
+							else if(res == 1)
+								outToClient.writeBytes("EDITING" + '\n');
+							else if(res == -1)
+								outToClient.writeBytes("NO_EXIST" + '\n');
+							else
+								outToClient.writeBytes("ERROR" + '\n');
 						}
+						
 						else {					//scarica intero documento
-							res = Turing.getDocument(username, docName, clientChannel);
+							String tmp = Turing.getDocument(username, docName, clientChannel);
 							if(Configurations.DEBUG)
 								System.out.println(username + " scarica la versione intera del file " + docName);
+							switch(tmp) {
+								case "SUCCESS":
+									outToClient.writeBytes("SUCCESS" + '\n');
+									break;
+								case "NO_EXIST":
+									outToClient.writeBytes("NO_EXIST" + '\n');
+									break;
+								default:		//sezioni occupate
+									if(tmp.startsWith("Sezioni"))
+										outToClient.writeBytes(tmp + '\n');
+									else
+										outToClient.writeBytes("ERROR" + '\n');
+									break;
+							}
 						}
 						
 						clientChannel = null;
 						clientChannel = createChannel();
 						
-						if(res == 0)
-							outToClient.writeBytes("SUCCESS" + '\n');
-						else if(res == 1)
-							outToClient.writeBytes("EDITING" + '\n');
-						else if(res == -1)
-							outToClient.writeBytes("NO_EXIST" + '\n');
-						else
-							outToClient.writeBytes("ERROR" + '\n');
 					}
 				}
 				else {
@@ -270,6 +289,8 @@ public class RequestHandler implements Runnable {
 				}
 			}
 		} while(flag);
+		
+		System.err.println("Un runnable RH ha terminato i suoi servizi.");
 	}
 
 	private SocketChannel createChannel() throws IOException {
