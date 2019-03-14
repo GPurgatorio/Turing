@@ -12,11 +12,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -50,7 +51,6 @@ public class GUIEditClass extends JFrame {
 	private DataOutputStream outToServer; 
 	private BufferedReader inFromServer;
 	private SocketChannel clientChannel;	// Socket diretta verso il server per salvare le modifiche
-	private ServerSocketChannel serverSocket;
 	private MulticastSocket chatSocket;		// Socket per la chat Multicast UDP
 	private InetAddress group;
 	private Chat c;							// Listener per la chat
@@ -65,14 +65,16 @@ public class GUIEditClass extends JFrame {
 	
 	
 	// Costruttore
-	public GUIEditClass(Socket s, SocketChannel sc, ServerSocketChannel ssc, String usr, String addr, String doc, int sec) throws IOException {
+	public GUIEditClass(Socket s, SocketChannel sc, String usr, String addr, String doc, int sec) throws IOException {
 		
 		clientSocket = s;
 		clientChannel = sc;
-		serverSocket = ssc;
 		username = usr;
 		docName = doc;
 		section = sec;
+		
+		if(clientChannel == null)
+			clientChannel = createChannel();
 		
 		try {
 			outToServer = new DataOutputStream(clientSocket.getOutputStream());
@@ -194,6 +196,19 @@ public class GUIEditClass extends JFrame {
 	}
 	
 	
+	private SocketChannel createChannel() throws IOException {
+		SocketChannel socketChannel = SocketChannel.open();
+		int port = username.hashCode() % 65535;
+        if(port < 0) 
+        	port = -port % 65535;
+        if(port < 1024)		//evito le porte "Well-known" [0-1023]
+        	port += 1024;
+        SocketAddress socketAddr = new InetSocketAddress("localhost", port);
+        socketChannel.connect(socketAddr);
+        return socketChannel;
+	}
+	
+	
 	// Invia il testo presente nella msgArea
 	private void sendMsg() throws IOException {
 		
@@ -233,7 +248,7 @@ public class GUIEditClass extends JFrame {
 			if(Configurations.DEBUG)
 				System.out.println("Fine Edit, torno in Logged");
 			c.disable();
-			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, username, "edit");
+			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, username, "edit");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);

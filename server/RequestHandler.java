@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.net.SocketAddress;
+import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.Set;
@@ -22,6 +22,7 @@ public class RequestHandler implements Runnable {
 	private BufferedReader inFromClient;
 	private DataOutputStream outToClient;
 	private SocketChannel clientChannel = null;	// Channel per la gestione file
+	private ServerSocketChannel serverSocket = null;
 	
 	public RequestHandler(Socket s) throws IOException {
 		clientSocket = s;
@@ -72,8 +73,11 @@ public class RequestHandler implements Runnable {
 						sendPendingInvites();				// Degli inviti che l'utente ha ricevuto mentre era offline
 						
 						//creo channel
+						if(serverSocket == null)
+							createServerSocket();
+						
 						if(clientChannel == null)
-							clientChannel = createChannel();
+							clientChannel = acceptServerSocketChannel();
 						
 					}
 				}
@@ -164,7 +168,7 @@ public class RequestHandler implements Runnable {
 							sectionDoc = section;					// E sezione in caso di crash
 							
 							clientChannel = null;
-							clientChannel = createChannel();
+							clientChannel = acceptServerSocketChannel();
 						}
 					}
 				}
@@ -183,7 +187,7 @@ public class RequestHandler implements Runnable {
 					outToClient.writeBytes(res + '\n');
 					
 					clientChannel = null;
-					clientChannel = createChannel();
+					clientChannel = acceptServerSocketChannel();
 				}
 				
 				else if (command.equals("list")) {
@@ -270,7 +274,7 @@ public class RequestHandler implements Runnable {
 						}
 						
 						clientChannel = null;
-						clientChannel = createChannel();
+						clientChannel = acceptServerSocketChannel();
 						
 					}
 				}
@@ -282,6 +286,10 @@ public class RequestHandler implements Runnable {
 			catch (Exception e) {			// Qualsiasi eccezione accada, tenta di rilasciare tutto per preservare la consistenza dei dati
 				try {
 					clientSocket.close();			// Chiudo socket tanto il client non è più attivo
+					if(clientChannel != null)
+						clientChannel.close();
+					if(serverSocket != null)
+						serverSocket.close();
 					if(!nameServed.equals(""))		// Disconnect in modo da farlo riconnettere
 						Turing.disconnect(nameServed);
 					if(sectionDoc != -1) 			// Unlock in caso di crash
@@ -298,17 +306,22 @@ public class RequestHandler implements Runnable {
 	}
 
 	// Genera un SocketChannel per la gestione file
-	private SocketChannel createChannel() throws IOException {
-		SocketChannel socketChannel = SocketChannel.open();
-		int port = nameServed.hashCode() % 65535;
+	private void createServerSocket() throws IOException {
+        serverSocket = ServerSocketChannel.open();
+        int port = nameServed.hashCode() % 65535;
         if(port < 0) 
         	port = -port % 65535;
         if(port < 1024)		//evito le porte "Well-known" [0-1023]
         	port += 1024;
-        SocketAddress socketAddr = new InetSocketAddress("localhost", port);
-        socketChannel.connect(socketAddr);
-        return socketChannel;
+        serverSocket.socket().bind(new InetSocketAddress(port));
 	}
+	
+	private SocketChannel acceptServerSocketChannel() throws IOException {
+        SocketChannel client = null;
+		client = serverSocket.accept();
+        return client;
+    }
+
 
 	// Invia gli inviti pendenti di nameServed
 	private void sendPendingInvites() {

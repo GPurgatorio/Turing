@@ -11,9 +11,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -39,8 +39,7 @@ public class GUILoggedClass extends JFrame {
 	private static Socket clientSocket;				// Socket per la gestione TCP
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
-	private static SocketChannel clientChannel;		// Socket per la visualizzazione/download dei files
-	private static ServerSocketChannel serverSocket;
+	private static SocketChannel clientChannel;		// Channel per il download dei files
 	private static NotSoGUIListener l;				// Listener degli Inviti Live
 	
 	// User Interface related
@@ -50,25 +49,21 @@ public class GUILoggedClass extends JFrame {
 	
 	
 	// Costruttore
-	public GUILoggedClass(Socket s, SocketChannel c, ServerSocketChannel ssc, String usr, String fromWhat) throws IOException {
+	public GUILoggedClass(Socket s, SocketChannel c, String usr, String fromWhat) throws IOException {
 
 		if(Configurations.DEBUG)
 			System.out.println("Inizializzazione LoggedGUI");
 		
 		clientSocket = s;
 		clientChannel = c;
-		serverSocket = ssc;
 		username = usr;
 		outToServer = new DataOutputStream(clientSocket.getOutputStream());
 		inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 		
-		if(serverSocket == null)
-			createServerSocketChannel();
-		
-		if(clientChannel == null)
-			clientChannel = acceptServerSocket();
-		
 		clientUI();
+		
+		if(clientChannel == null) 
+			clientChannel = createChannel();
 		
 		if(fromWhat.equals("login")) {		// Se arrivo da un login -> voglio controllare gli inviti
 			checkPendingInvites();			// di quando ero offline...
@@ -80,22 +75,17 @@ public class GUILoggedClass extends JFrame {
 	}
 	
 	
-	private void createServerSocketChannel() throws IOException {
-        serverSocket = ServerSocketChannel.open();
-        int port = username.hashCode() % 65535;
+	private SocketChannel createChannel() throws IOException {
+		SocketChannel socketChannel = SocketChannel.open();
+		int port = username.hashCode() % 65535;
         if(port < 0) 
         	port = -port % 65535;
         if(port < 1024)		//evito le porte "Well-known" [0-1023]
         	port += 1024;
-        serverSocket.socket().bind(new InetSocketAddress(port));
+        SocketAddress socketAddr = new InetSocketAddress("localhost", port);;
+        socketChannel.connect(socketAddr);
+        return socketChannel;
 	}
-	
-	
-	private SocketChannel acceptServerSocket() throws IOException {
-        SocketChannel client = null;
-		client = serverSocket.accept();
-        return client;
-    }
 
 	
 	//Listener per gli inviti live (durante il periodo in cui l'utente è online)
@@ -439,10 +429,9 @@ public class GUILoggedClass extends JFrame {
 				buffer.clear();
 			}
 			clientChannel.close();
-			outChannel.close(); 
-	        
-			clientChannel = null;
-			clientChannel = acceptServerSocket();			// Rendo possibile continuare le richieste
+			outChannel.close();
+			
+			clientChannel = createChannel();
 			
 			if(Configurations.DEBUG)
 				System.out.println("File scaricato correttamente!");
@@ -611,9 +600,8 @@ public class GUILoggedClass extends JFrame {
 			
 			clientChannel.close();
 			outChannel.close(); 
-	        
-			clientChannel = null;
-			clientChannel = acceptServerSocket();
+			
+			clientChannel = createChannel();
 			
 			res = "SUCCESS";				// Passo alla modalità di Editing
 		}		
@@ -623,7 +611,7 @@ public class GUILoggedClass extends JFrame {
 		
 		switch(res) {
 			case "SUCCESS":
-				GUIEditClass w = new GUIEditClass(clientSocket, clientChannel, serverSocket, username, tmp, docName, section);
+				GUIEditClass w = new GUIEditClass(clientSocket, clientChannel, username, tmp, docName, section);
 				username = "";
 				w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);
 				w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
@@ -666,12 +654,11 @@ public class GUILoggedClass extends JFrame {
 			l.disable();										// Interrompo Listener
 			clientSocket.close();
 			clientChannel.close();
-			serverSocket.close();
 			
 			// Torno alla schermata di Login
 			GUIClass w = new GUIClass();			
 			w.getContentPane().setBackground(Configurations.GUI_LOGIN_BACKGROUND);	
-			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
+			w.setLocation(w.getX(), w.getY());
 			w.setVisible(true);
 			this.dispose();
 		}

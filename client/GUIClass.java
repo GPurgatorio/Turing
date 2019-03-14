@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
@@ -38,7 +37,6 @@ public class GUIClass extends JFrame {
 	private static DataOutputStream outToServer;
 	private static BufferedReader inFromServer;
 	private static SocketChannel clientChannel;	
-	private static ServerSocketChannel serverSocket;
 	private boolean offline;
 	
 	// User Interface related
@@ -250,7 +248,7 @@ public class GUIClass extends JFrame {
         // Se l'esito della richiesta è positivo, cambio la schermata nella modalità di Gestione
 		if(res.equals("SUCCESS")) {						
 			
-			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, serverSocket, inpUser, "login");
+			GUILoggedClass w = new GUILoggedClass(clientSocket, clientChannel, inpUser, "login");
 			w.getContentPane().setBackground(Configurations.GUI_BACKGROUND);	
 			w.setLocation(Configurations.GUI_X_POS, Configurations.GUI_Y_POS);
 			w.setVisible(true);
